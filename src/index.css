@@ -1,0 +1,446 @@
+@import "tailwindcss";
+
+@theme {
+  --color-candy-red: #ff1a1a;
+  --color-candy-red-dark: #cc0000;
+  --color-candy-red-light: #ff4d4d;
+  --color-neon-yellow: #ffe600;
+  --color-neon-yellow-light: #fff066;
+  --color-neon-gold: #ffd700;
+  --color-neon-pink: #ff69b4;
+  --color-neon-orange: #ff8c00;
+  --color-glass-white: rgba(255, 255, 255, 0.1);
+  --color-glass-black: rgba(0, 0, 0, 0.3);
+  --color-stage-dark: #0a0a0a;
+  --color-stage-dark-2: #151515;
+}
+
+/* Base styles */
+:root {
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: dark;
+  color: #ffffff;
+  background-color: #0a0a0a;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: #0a0a0a;
+}
+
+/* Neon glow effects - RED */
+.neon-glow-red {
+  box-shadow: 
+    0 0 5px #ff1a1a,
+    0 0 10px #ff1a1a,
+    0 0 20px #ff1a1a,
+    0 0 40px #ff1a1a;
+}
+
+/* Neon glow effects - GOLD/YELLOW */
+.neon-glow-gold {
+  box-shadow: 
+    0 0 5px #ffd700,
+    0 0 10px #ffd700,
+    0 0 20px #ffd700,
+    0 0 40px #ffd700;
+}
+
+.neon-glow-yellow {
+  box-shadow: 
+    0 0 5px #ffe600,
+    0 0 10px #ffe600,
+    0 0 20px #ffe600,
+    0 0 40px #ffe600;
+}
+
+/* Mixed red-gold glow */
+.neon-glow-mixed {
+  box-shadow: 
+    0 0 5px #ff1a1a,
+    0 0 10px #ff1a1a,
+    0 0 20px #ffd700,
+    0 0 40px #ffd700;
+}
+
+/* Text glow - RED */
+.text-glow-red {
+  text-shadow: 
+    0 0 5px #ff1a1a,
+    0 0 10px #ff1a1a,
+    0 0 20px #ff1a1a;
+}
+
+/* Text glow - GOLD */
+.text-glow-gold {
+  text-shadow: 
+    0 0 5px #ffd700,
+    0 0 10px #ffd700,
+    0 0 20px #ffd700;
+}
+
+.text-glow-yellow {
+  text-shadow: 
+    0 0 5px #ffe600,
+    0 0 10px #ffe600,
+    0 0 20px #ffe600;
+}
+
+/* Glassmorphism */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-dark {
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Glass with RED tint */
+.glass-red {
+  background: rgba(255, 26, 26, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 26, 26, 0.3);
+}
+
+/* Glass with GOLD tint */
+.glass-gold {
+  background: rgba(255, 215, 0, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+/* Neon border - RED */
+.neon-border-red {
+  border: 2px solid #ff1a1a;
+  box-shadow: 
+    inset 0 0 5px #ff1a1a,
+    0 0 10px #ff1a1a;
+}
+
+/* Neon border - GOLD */
+.neon-border-gold {
+  border: 2px solid #ffd700;
+  box-shadow: 
+    inset 0 0 5px #ffd700,
+    0 0 10px #ffd700;
+}
+
+/* Gradient backgrounds */
+.stage-gradient {
+  background: 
+    radial-gradient(ellipse at bottom, #1a0000 0%, #0a0a0a 50%),
+    linear-gradient(180deg, #0a0a0a 0%, #150000 100%);
+}
+
+/* Stage gradient with gold accents */
+.spotlight-gradient {
+  background: 
+    radial-gradient(ellipse at 50% 0%, rgba(255, 26, 26, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 30% 20%, rgba(255, 215, 0, 0.1) 0%, transparent 40%),
+    radial-gradient(ellipse at 70% 20%, rgba(255, 215, 0, 0.1) 0%, transparent 40%),
+    #0a0a0a;
+}
+
+/* Candy red gradient */
+.gradient-candy-red {
+  background: linear-gradient(135deg, #ff1a1a 0%, #cc0000 50%, #ff1a1a 100%);
+}
+
+/* Neon gold gradient */
+.gradient-neon-gold {
+  background: linear-gradient(135deg, #ffd700 0%, #ff8c00 50%, #ffd700 100%);
+}
+
+/* Red to gold gradient */
+.gradient-red-to-gold {
+  background: linear-gradient(135deg, #ff1a1a 0%, #ffd700 100%);
+}
+
+/* Button styles - RED */
+.btn-neon-red {
+  background: linear-gradient(135deg, #ff1a1a 0%, #cc0000 100%);
+  color: white;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-neon-red:hover {
+  box-shadow: 
+    0 0 10px #ff1a1a,
+    0 0 20px #ff1a1a,
+    0 0 30px #ff1a1a;
+  transform: translateY(-2px);
+}
+
+/* Button styles - GOLD */
+.btn-neon-gold {
+  background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
+  color: #0a0a0a;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-neon-gold:hover {
+  box-shadow: 
+    0 0 10px #ffd700,
+    0 0 20px #ffd700,
+    0 0 30px #ffd700;
+  transform: translateY(-2px);
+}
+
+/* Card hover effects */
+.card-neon-hover {
+  transition: all 0.3s ease;
+}
+
+.card-neon-hover:hover {
+  transform: translateY(-5px);
+  box-shadow: 
+    0 0 15px rgba(255, 26, 26, 0.5),
+    0 0 30px rgba(255, 215, 0, 0.3);
+  border-color: rgba(255, 215, 0, 0.5);
+}
+
+/* Pulse animation for live indicator */
+@keyframes pulse-live {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(255, 26, 26, 0.7);
+  }
+  50% {
+    opacity: 0.8;
+    box-shadow: 0 0 0 10px rgba(255, 26, 26, 0);
+  }
+}
+
+.pulse-live {
+  animation: pulse-live 2s infinite;
+}
+
+/* Neon shimmer animation */
+@keyframes neon-shimmer {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.neon-shimmer {
+  animation: neon-shimmer 2s ease-in-out infinite;
+}
+
+/* Scanlines effect for stage feel */
+.scanlines::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.1),
+    rgba(0, 0, 0, 0.1) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Custom scrollbar - RED theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ff1a1a;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #ffd700;
+}
+
+/* Countdown timer styles */
+.countdown-digit {
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
+  border: 2px solid #ff1a1a;
+  box-shadow: 0 0 10px rgba(255, 26, 26, 0.5);
+}
+
+/* Input styles */
+.input-neon {
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid rgba(255, 215, 0, 0.3);
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.input-neon:focus {
+  border-color: #ffd700;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+  outline: none;
+}
+
+/* Avatar styles - red/gold ring */
+.avatar-ring {
+  border: 3px solid transparent;
+  background: 
+    linear-gradient(#0a0a0a, #0a0a0a) padding-box,
+    linear-gradient(135deg, #ff1a1a, #ffd700) border-box;
+}
+
+/* Chat message styles */
+.chat-message {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Voting button pulse */
+@keyframes vote-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.vote-pulse:hover {
+  animation: vote-pulse 0.5s ease-in-out infinite;
+}
+
+/* Scrollbar for horizontal scrolling */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Responsive utilities */
+@media (max-width: 768px) {
+  .hide-mobile {
+    display: none;
+  }
+}
+
+/* Gold shimmer effect */
+@keyframes gold-shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.shimmer-gold {
+  background: linear-gradient(
+    90deg,
+    #ffd700 0%,
+    #ffed4a 25%,
+    #ffd700 50%,
+    #ffed4a 75%,
+    #ffd700 100%
+  );
+  background-size: 200% auto;
+  animation: gold-shimmer 3s linear infinite;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Red shimmer effect */
+@keyframes red-shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.shimmer-red {
+  background: linear-gradient(
+    90deg,
+    #ff1a1a 0%,
+    #ff6b6b 25%,
+    #ff1a1a 50%,
+    #ff6b6b 75%,
+    #ff1a1a 100%
+  );
+  background-size: 200% auto;
+  animation: red-shimmer 3s linear infinite;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Live badge */
+.live-badge {
+  background: #ff1a1a;
+  color: white;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+  border-radius: 2px;
+}
+
+/* Gold badge */
+.gold-badge {
+  background: #ffd700;
+  color: #0a0a0a;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+  border-radius: 2px;
+}
