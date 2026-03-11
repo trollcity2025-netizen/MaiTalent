@@ -5,7 +5,7 @@ import type { BadgeType } from '../components/Badge';
 import { useAppStore } from '../store/useAppStore';
 import { useNavigate } from 'react-router-dom';
 import { PayoutAllModal } from '../components/PayoutAllModal';
-import { Globe, MessageSquare, Check, X, Loader2 } from 'lucide-react';
+import { Globe, MessageSquare } from 'lucide-react';
 
 type TabType = 'judge_applications' | 'users' | 'settings' | 'badges' | 'payouts' | 'ip_ban' | 'support_tickets';
 
