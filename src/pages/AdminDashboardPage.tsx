@@ -6,7 +6,7 @@ import { VideoPlayer } from '../components/VideoPlayer';
 import { useAppStore } from '../store/useAppStore';
 import { useNavigate } from 'react-router-dom';
 import { PayoutAllModal } from '../components/PayoutAllModal';
-import { Globe, MessageSquare, Play, X, ChevronRight, ChevronDown } from 'lucide-react';
+import { Globe, MessageSquare, Play, X } from 'lucide-react';
 
 type TabType = 'judge_applications' | 'host_applications' | 'performer_applications' | 'users' | 'settings' | 'badges' | 'payouts' | 'ip_ban' | 'support_tickets';
 
@@ -138,17 +138,6 @@ export const AdminDashboardPage: React.FC = () => {
   const [newBanExpiry, setNewBanExpiry] = useState('');
   const [banningUser, setBanningUser] = useState(false);
   const [selectedBanUser, setSelectedBanUser] = useState<string>('');
-  
-  // Collapsible sections state
-  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
-  
-  // Toggle section collapse
-  const toggleSection = (section: string) => {
-    setCollapsedSections(prev => ({
-      ...prev,
-      [section]: !prev[section]
-    }));
-  };
   
   // Video modal state
   const [showVideoModal, setShowVideoModal] = useState(false);
