@@ -17,17 +17,52 @@ export function AuthPage() {
   const [success, setSuccess] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
 
-  // Check for mode in URL params
+  // Check for mode in URL params or handle Supabase password reset
   useEffect(() => {
     const modeParam = searchParams.get('mode')
     if (modeParam === 'reset-password') {
       setMode('reset-password')
     }
+    
+    // Check for Supabase token in hash (password reset flow)
+    const hash = window.location.hash
+    if (hash.includes('access_token') || hash.includes('type=recovery')) {
+      setMode('reset-password')
+    }
   }, [searchParams])
 
-  // Check if user is already logged in and has accepted terms
-  // Only redirect if user is logged in and trying to access auth page (not for signup flow)
+  // Handle password reset - need to exchange token for session
   useEffect(() => {
+    const handlePasswordReset = async () => {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1))
+      const accessToken = hashParams.get('access_token')
+      const refreshToken = hashParams.get('refresh_token')
+      
+      if (accessToken && refreshToken) {
+        // Set the session from the tokens in the URL
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        })
+        
+        if (error) {
+          console.error('Error setting session:', error)
+          setError('Invalid or expired reset link. Please request a new password reset.')
+        }
+      }
+    }
+    
+    if (mode === 'reset-password') {
+      handlePasswordReset()
+    }
+  }, [mode])
+
+  // Check if user is already logged in and has accepted terms
+  // Only redirect if user is logged in and trying to access auth page (not for signup flow or password reset)
+  useEffect(() => {
+    // Skip check if in password reset mode
+    if (mode === 'reset-password') return
+    
     const checkUser = async () => {
       // Skip check if this is the initial load - let the form render first
       const { data: { user }, error } = await supabase.auth.getUser()
@@ -64,7 +99,7 @@ export function AuthPage() {
     }, 100)
     
     return () => clearTimeout(timer)
-  }, [navigate])
+  }, [navigate, mode])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
