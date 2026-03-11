@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useCurrentSeason, useCompetitionRounds, useSeasonAuditions, useAllSeasons } from '../hooks/useCompetition'
 import type { Season, CompetitionRound, SeasonAudition } from '../lib/supabase'
 

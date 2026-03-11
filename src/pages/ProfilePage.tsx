@@ -56,10 +56,10 @@ export function ProfilePage() {
   useEffect(() => {
     if (profileUser && isOwnProfile && !isEditing) {
       setEditForm({
-        username: profileUser.username || '',
-        bio: profileUser.bio || '',
-        talent_category: profileUser.talent_category || '',
-        avatar: profileUser.avatar || ''
+        username: String(profileUser.username || ''),
+        bio: String(profileUser.bio || ''),
+        talent_category: String(profileUser.talent_category || ''),
+        avatar: String(profileUser.avatar || '')
       })
     }
   }, [profileUser, isOwnProfile, isEditing])
@@ -119,18 +119,22 @@ export function ProfilePage() {
         // Update store
         setUser({
           ...storeUser,
-          id: profile.id,
-          username: profile.username,
-          avatar: profile.avatar,
-          bio: profile.bio,
-          talent_category: profile.talent_category,
-          coin_balance: profile.coin_balance,
-          is_admin: profile.is_admin,
-          is_ceo: profile.is_ceo,
-          is_verified: profile.is_verified,
-          is_performer: profile.is_performer,
-          paypal_email: profile.paypal_email,
-          paypal_verified: profile.paypal_verified
+          id: String(profile.id),
+          username: String(profile.username || ''),
+          avatar: String(profile.avatar || ''),
+          bio: String(profile.bio || ''),
+          talent_category: String(profile.talent_category || ''),
+          followers: Number(profile.followers) || 0,
+          following: Number(profile.following) || 0,
+          coin_balance: Number(profile.coin_balance) || 0,
+          total_earnings: Number(profile.total_earnings) || 0,
+          is_admin: Boolean(profile.is_admin),
+          is_ceo: Boolean(profile.is_ceo),
+          is_verified: Boolean(profile.is_verified),
+          is_performer: Boolean(profile.is_performer),
+          paypal_email: profile.paypal_email || null,
+          paypal_verified: Boolean(profile.paypal_verified),
+          created_at: String(profile.created_at || new Date().toISOString())
         })
       }
     } catch (error) {
@@ -262,10 +266,22 @@ export function ProfilePage() {
       // Update store
       setUser({
         ...storeUser,
+        id: storeUser?.id || '',
         username: editForm.username,
         avatar: editForm.avatar,
         bio: editForm.bio,
-        talent_category: editForm.talent_category
+        talent_category: editForm.talent_category,
+        followers: storeUser?.followers || 0,
+        following: storeUser?.following || 0,
+        coin_balance: storeUser?.coin_balance || 0,
+        total_earnings: storeUser?.total_earnings || 0,
+        is_admin: storeUser?.is_admin || false,
+        is_ceo: storeUser?.is_ceo || false,
+        is_verified: storeUser?.is_verified || false,
+        is_performer: storeUser?.is_performer || false,
+        paypal_email: storeUser?.paypal_email || null,
+        paypal_verified: storeUser?.paypal_verified || false,
+        created_at: storeUser?.created_at || new Date().toISOString()
       })
 
       setIsEditing(false)

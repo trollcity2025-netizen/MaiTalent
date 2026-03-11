@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useYouTubeSettings, useShowYouTubeBroadcast, useYouTubeStreamStatus } from '../hooks/useYouTubeBroadcast'
 import { Youtube, Radio, Settings, Play, Square, ExternalLink, Copy, Check } from 'lucide-react'
 

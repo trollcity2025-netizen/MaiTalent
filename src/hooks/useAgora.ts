@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import AgoraRTC, { IAgoraRTCClient, ILocalVideoTrack, ILocalAudioTrack, IRemoteUser } from 'agora-rtc-sdk-ng'
+import AgoraRTC from 'agora-rtc-sdk-ng'
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AgoraTrack = any
 
 // Agora configuration
 const APP_ID = import.meta.env.VITE_AGORA_APP_ID || '96360db28886429a891d823347bdfa43'
@@ -26,8 +29,8 @@ export interface UseAgoraReturn {
   isPublishing: boolean
   
   // Local tracks for rendering
-  localVideoTrack: ILocalVideoTrack | null
-  localAudioTrack: ILocalAudioTrack | null
+  localVideoTrack: AgoraTrack
+  localAudioTrack: AgoraTrack
   
   // Controls
   join: () => Promise<void>
@@ -49,18 +52,18 @@ export interface UseAgoraReturn {
 export function useAgora(options: UseAgoraOptions): UseAgoraReturn {
   const { channelName, role, userId } = options
   
-  const clientRef = useRef<IAgoraRTCClient | null>(null)
-  const localVideoRef = useRef<ILocalVideoTrack | null>(null)
-  const localAudioRef = useRef<ILocalAudioTrack | null>(null)
-  const screenShareRef = useRef<ILocalVideoTrack | null>(null)
+  const clientRef = useRef<AgoraTrack>(null)
+  const localVideoRef = useRef<AgoraTrack>(null)
+  const localAudioRef = useRef<AgoraTrack>(null)
+  const screenShareRef = useRef<AgoraTrack>(null)
   const isJoinedRef = useRef(false)
   const isScreenSharingRef = useRef(false)
   
   const [remoteUsers, setRemoteUsers] = useState<Map<string, AgoraUser>>(new Map())
   const [isJoined, setIsJoined] = useState(false)
   const [isPublishing, setIsPublishing] = useState(false)
-  const [localVideoTrack, setLocalVideoTrack] = useState<ILocalVideoTrack | null>(null)
-  const [localAudioTrack, setLocalAudioTrack] = useState<ILocalAudioTrack | null>(null)
+  const [localVideoTrack, setLocalVideoTrack] = useState<AgoraTrack>(null)
+  const [localAudioTrack, setLocalAudioTrack] = useState<AgoraTrack>(null)
   const [isScreenSharing, setIsScreenSharing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -100,7 +103,8 @@ export function useAgora(options: UseAgoraOptions): UseAgoraReturn {
       }
       
       await clientRef.current.unpublish()
-      await clientRef.current.publish([localVideoRef.current, localAudioRef.current].filter(Boolean))
+      const tracks = [localVideoRef.current, localAudioRef.current].filter(Boolean)
+      await clientRef.current.publish(tracks)
       
       isScreenSharingRef.current = false
       setIsScreenSharing(false)
@@ -193,14 +197,12 @@ export function useAgora(options: UseAgoraOptions): UseAgoraReturn {
   const muteAudio = useCallback(() => {
     if (localAudioRef.current) {
       localAudioRef.current.setEnabled(false)
-      setIsMutedAudio(true)
     }
   }, [])
   
   const unmuteAudio = useCallback(() => {
     if (localAudioRef.current) {
       localAudioRef.current.setEnabled(true)
-      setIsMutedAudio(false)
     }
   }, [])
 
@@ -208,14 +210,12 @@ export function useAgora(options: UseAgoraOptions): UseAgoraReturn {
   const muteVideo = useCallback(() => {
     if (localVideoRef.current) {
       localVideoRef.current.setEnabled(false)
-      setIsMutedVideo(true)
     }
   }, [])
   
   const unmuteVideo = useCallback(() => {
     if (localVideoRef.current) {
       localVideoRef.current.setEnabled(true)
-      setIsMutedVideo(false)
     }
   }, [])
 
@@ -228,7 +228,7 @@ export function useAgora(options: UseAgoraOptions): UseAgoraReturn {
       localVideoRef.current.stop()
       
       // Create screen share track
-      const screenTrack = await AgoraRTC.createScreenVideoTrack({
+      const screenTrackResult = await AgoraRTC.createScreenVideoTrack({
         encoderConfig: {
           width: 1920,
           height: 1080,
@@ -238,13 +238,14 @@ export function useAgora(options: UseAgoraOptions): UseAgoraReturn {
         }
       })
       
-      const track = Array.isArray(screenTrack) ? screenTrack[0] : screenTrack
+      const track = Array.isArray(screenTrackResult) ? screenTrackResult[0] : screenTrackResult
       
       // Unpublish camera
       await clientRef.current.unpublish([localVideoRef.current])
       
       // Publish screen share
-      await clientRef.current.publish([track, localAudioRef.current].filter(Boolean))
+      const tracks = [track, localAudioRef.current].filter(Boolean)
+      await clientRef.current.publish(tracks)
       
       screenShareRef.current = track
       isScreenSharingRef.current = true
@@ -278,7 +279,7 @@ export function useAgora(options: UseAgoraOptions): UseAgoraReturn {
     }
     
     // Handle remote user joined
-    client.on('user-published', async (user: IRemoteUser, mediaType: 'video' | 'audio') => {
+    client.on('user-published', async (user: AgoraTrack, mediaType: 'video' | 'audio') => {
       try {
         await client.subscribe(user, mediaType)
         
@@ -312,7 +313,7 @@ export function useAgora(options: UseAgoraOptions): UseAgoraReturn {
     })
     
     // Handle remote user unpublished
-    client.on('user-unpublished', (user: IRemoteUser, mediaType: 'video' | 'audio') => {
+    client.on('user-unpublished', (user: AgoraTrack, mediaType: 'video' | 'audio') => {
       const userKey = String(user.uid)
       
       setRemoteUsers(prev => {
@@ -333,7 +334,7 @@ export function useAgora(options: UseAgoraOptions): UseAgoraReturn {
     })
     
     // Handle remote user left
-    client.on('user-left', (user: IRemoteUser) => {
+    client.on('user-left', (user: AgoraTrack) => {
       const userKey = String(user.uid)
       setRemoteUsers(prev => {
         const updated = new Map(prev)

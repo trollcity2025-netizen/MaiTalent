@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { ILocalVideoTrack } from 'agora-rtc-sdk-ng'
+import type { ILocalVideoTrack } from 'agora-rtc-sdk-ng'
 
 interface AgoraVideoProps {
   videoTrack?: ILocalVideoTrack | null

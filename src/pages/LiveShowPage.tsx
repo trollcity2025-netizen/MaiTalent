@@ -1549,7 +1549,6 @@ export function LiveShowPage() {
                           {isPublishingVideo && currentUserRole === 'judge' && user?.id === judge.userId ? (
                             <AgoraVideo
                               videoTrack={agora.localVideoTrack}
-                              audioTrack={agora.localAudioTrack}
                               userId={judge.userId || String(judge.id)}
                               username={judge.username || 'Judge'}
                               avatar={judge.avatar || undefined}

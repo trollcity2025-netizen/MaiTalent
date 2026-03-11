@@ -1,4 +1,3 @@
-import React from 'react'
 import type { PerformerWithScore } from '../lib/supabase'
 
 interface EliminationMeterProps {

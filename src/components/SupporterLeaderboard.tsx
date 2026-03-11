@@ -1,4 +1,3 @@
-import React from 'react'
 import type { SupporterInfo } from '../lib/supabase'
 
 interface SupporterLeaderboardProps {
