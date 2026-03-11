@@ -54,6 +54,7 @@ function App() {
         <Route path="/login" element={<AuthPage />} />
         <Route path="/signup" element={<AuthPage />} />
         <Route path="/reset-password" element={<AuthPage />} />
+        <Route path="/auth/callback" element={<AuthPage />} />
         
         {/* Terms page - must accept before signup */}
         <Route path="/terms" element={<TermsPage />} />

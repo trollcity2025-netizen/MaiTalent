@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Play, Clock, Trophy, Star, Music, Mic, Zap, Gift, Users, Calendar } from 'lucide-react'
 import { useLiveShows, useTrendingPerformers, useUpcomingShows } from '../hooks/useSupabaseData'
-import { useUserRole } from '../hooks/useUserRole'
 
 // Colors as specified
 const COLORS = {
@@ -25,10 +24,6 @@ export function HomePage() {
   const { shows: liveShows } = useLiveShows()
   const { performers } = useTrendingPerformers()
   const { shows: upcomingShows } = useUpcomingShows()
-  const { isCeo, isAdmin } = useUserRole()
-  
-  // Check if user can open the curtains (admin or ceo only)
-  const canOpenCurtains = isCeo || isAdmin
   
   // Get the next show time from upcoming shows
   const nextShow = upcomingShows[0]
@@ -92,29 +87,147 @@ export function HomePage() {
           `
         }}
       >
-        {/* Stage Curtains - Left - Only show for privileged users */}
-        {canOpenCurtains && (
-          <div 
-            className="absolute left-0 top-0 bottom-0 w-32 z-20"
-            style={{
-              background: `linear-gradient(90deg, ${COLORS.red} 0%, #990000 50%, ${COLORS.red} 100%)`,
-              clipPath: 'polygon(0 0, 100% 0, 60% 100%, 0 100%)',
-              boxShadow: '5px 0 30px rgba(255, 45, 45, 0.5)'
-            }}
-          />
-        )}
+        {/* Stage Curtains - Left - Realistic velvet theater curtains */}
+        <div 
+          className="absolute left-0 top-0 bottom-0 w-1/4 z-20 overflow-hidden"
+        >
+          <div className="h-full" style={{
+            background: `
+              linear-gradient(
+                to bottom,
+                rgba(255,120,120,0.5) 0%,
+                rgba(180,0,0,0.5) 40%,
+                rgba(120,0,0,0.7) 70%,
+                rgba(60,0,0,0.8) 100%
+              )
+            `
+          }}>
+            {/* Velvet fabric texture */}
+            <div className="absolute inset-0" style={{
+              backgroundImage: `
+                repeating-linear-gradient(
+                  90deg,
+                  rgba(0,0,0,0.1) 0px,
+                  rgba(0,0,0,0.2) 10px,
+                  rgba(255,255,255,0.03) 15px,
+                  rgba(0,0,0,0.15) 22px
+                )
+              `
+            }}></div>
+            
+            {/* Curtain folds */}
+            {[...Array(8)].map((_, i) => (
+              <div key={`fold-${i}`} className="absolute top-0 h-full animate-curtain-sway" style={{
+                left: `${i * 10 + 2}%`,
+                width: '16%',
+                background: `
+                  linear-gradient(
+                    to bottom,
+                    rgba(255,100,100,0.25) 0%,
+                    rgba(100,0,0,0.5) 50%,
+                    rgba(50,0,0,0.7) 100%
+                  )
+                `,
+                boxShadow: 'inset -6px 0 15px rgba(0,0,0,0.4)',
+                animationDelay: `${i * 0.3}s`,
+                transform: `skewX(${-2 + i * 0.5}deg)`
+              }}></div>
+            ))}
+            
+            {/* Bottom shadow */}
+            <div className="absolute bottom-0 left-0 right-0 h-20" style={{
+              background: 'linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.5) 100%)'
+            }}></div>
+            
+            {/* Valance (top decorative piece) */}
+            <div className="absolute top-0 left-0 right-0 h-24" style={{
+              background: `
+                radial-gradient(ellipse 30% 100% at 15% 50%, #ff3b3b 0%, #cc1a1a 50%, #6b0000 100%),
+                radial-gradient(ellipse 30% 100% at 50% 50%, #ff3b3b 0%, #cc1a1a 50%, #6b0000 100%),
+                radial-gradient(ellipse 30% 100% at 85% 50%, #ff3b3b 0%, #cc1a1a 50%, #6b0000 100%),
+                linear-gradient(180deg, #ff3b3b 0%, #b30000 100%)
+              `
+            }}></div>
+            
+            {/* Valance shadow */}
+            <div className="absolute top-20 left-0 right-0 h-6" style={{
+              background: 'linear-gradient(180deg, rgba(0,0,0,0.4) 0%, transparent 100%)'
+            }}></div>
+          </div>
+        </div>
         
-        {/* Stage Curtains - Right - Only show for privileged users */}
-        {canOpenCurtains && (
-          <div 
-            className="absolute right-0 top-0 bottom-0 w-32 z-20"
-            style={{
-              background: `linear-gradient(90deg, ${COLORS.red} 0%, #990000 50%, ${COLORS.red} 100%)`,
-              clipPath: 'polygon(0 0, 100% 0, 100% 100%, 40% 100%)',
-              boxShadow: '-5px 0 30px rgba(255, 45, 45, 0.5)'
-            }}
-          />
-        )}
+        {/* Stage Curtains - Right - Realistic velvet theater curtains */}
+        <div 
+          className="absolute right-0 top-0 bottom-0 w-1/4 z-20 overflow-hidden"
+        >
+          <div className="h-full ml-auto" style={{
+            background: `
+              linear-gradient(
+                to bottom,
+                rgba(255,120,120,0.5) 0%,
+                rgba(180,0,0,0.5) 40%,
+                rgba(120,0,0,0.7) 70%,
+                rgba(60,0,0,0.8) 100%
+              )
+            `
+          }}>
+            {/* Velvet fabric texture */}
+            <div className="absolute inset-0" style={{
+              backgroundImage: `
+                repeating-linear-gradient(
+                  90deg,
+                  rgba(0,0,0,0.1) 0px,
+                  rgba(0,0,0,0.2) 10px,
+                  rgba(255,255,255,0.03) 15px,
+                  rgba(0,0,0,0.15) 22px
+                )
+              `
+            }}></div>
+            
+            {/* Curtain folds */}
+            {[...Array(8)].map((_, i) => (
+              <div key={`fold-r-${i}`} className="absolute top-0 h-full animate-curtain-sway" style={{
+                right: `${i * 10 + 2}%`,
+                width: '16%',
+                background: `
+                  linear-gradient(
+                    to bottom,
+                    rgba(255,100,100,0.25) 0%,
+                    rgba(100,0,0,0.5) 50%,
+                    rgba(50,0,0,0.7) 100%
+                  )
+                `,
+                boxShadow: 'inset 6px 0 15px rgba(0,0,0,0.4)',
+                animationDelay: `${i * 0.3 + 0.15}s`,
+                transform: `skewX(${2 - i * 0.5}deg)`
+              }}></div>
+            ))}
+            
+            {/* Bottom shadow */}
+            <div className="absolute bottom-0 left-0 right-0 h-20" style={{
+              background: 'linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.5) 100%)'
+            }}></div>
+            
+            {/* Valance (top decorative piece) */}
+            <div className="absolute top-0 left-0 right-0 h-24" style={{
+              background: `
+                radial-gradient(ellipse 30% 100% at 15% 50%, #ff3b3b 0%, #cc1a1a 50%, #6b0000 100%),
+                radial-gradient(ellipse 30% 100% at 50% 50%, #ff3b3b 0%, #cc1a1a 50%, #6b0000 100%),
+                radial-gradient(ellipse 30% 100% at 85% 50%, #ff3b3b 0%, #cc1a1a 50%, #6b0000 100%),
+                linear-gradient(180deg, #ff3b3b 0%, #b30000 100%)
+              `
+            }}></div>
+            
+            {/* Valance shadow */}
+            <div className="absolute top-20 left-0 right-0 h-6" style={{
+              background: 'linear-gradient(180deg, rgba(0,0,0,0.4) 0%, transparent 100%)'
+            }}></div>
+          </div>
+        </div>
+        
+        {/* Curtain divider */}
+        <div className="absolute top-0 bottom-0 left-1/2 w-[4px] -translate-x-1/2 pointer-events-none z-25
+          bg-gradient-to-b from-black/30 via-black/50 to-black/30 blur-[1px]"></div>
 
         {/* Spotlight Beams */}
         <div 
@@ -585,7 +698,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* CSS for pulse animation */}
+      {/* CSS for pulse and curtain animations */}
       <style>{`
         @keyframes pulse-live {
           0%, 100% {
@@ -596,6 +709,19 @@ export function HomePage() {
             opacity: 0.8;
             box-shadow: 0 0 0 10px rgba(255, 45, 45, 0);
           }
+        }
+        
+        @keyframes curtain-sway {
+          0%, 100% {
+            transform: skewX(var(--sway-direction, -2deg));
+          }
+          50% {
+            transform: skewX(calc(var(--sway-direction, -2deg) + 2deg));
+          }
+        }
+        
+        .animate-curtain-sway {
+          animation: curtain-sway 4s ease-in-out infinite;
         }
       `}</style>
     </div>
