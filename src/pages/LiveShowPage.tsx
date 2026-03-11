@@ -209,6 +209,9 @@ export function LiveShowPage() {
   // Queue state - track if user is in queue
   const [isInQueue, setIsInQueue] = useState(false)
   
+  // Judge panel state - for open/close voting panel
+  const [isJudgePanelOpen, setIsJudgePanelOpen] = useState(false)
+  
   // Agora channel name
   const agoraChannelName = id ? `show-${id}` : 'show-preview'
   
@@ -374,13 +377,29 @@ export function LiveShowPage() {
     })
   }
 
-  // Handle leaving the stage
-  const handleLeaveStage = async () => {
-    await agora.leave()
-    setIsPublishingVideo(false)
-    setCurrentUserRole(null)
-    setIsMuted(false)
-    setIsVideoOff(false)
+  // Handle leaving the stage (for host, judge, or performer)
+  const handleLeave = async () => {
+    // Check if user is a judge
+    if (currentUserRole === 'judge' && user) {
+      await agora.leave()
+      setIsPublishingVideo(false)
+      setCurrentUserRole(null)
+      setIsMuted(false)
+      setIsVideoOff(false)
+      
+      // Clear the judge's box
+      setJudgeBoxes(prev => prev.map(judge => 
+        judge.userId === user.id 
+          ? { ...judge, isJoined: false, userId: null, username: null, avatar: null, vote: null }
+          : judge
+      ))
+    } else {
+      await agora.leave()
+      setIsPublishingVideo(false)
+      setCurrentUserRole(null)
+      setIsMuted(false)
+      setIsVideoOff(false)
+    }
   }
 
   // Handle joining the queue (for regular users to perform)
@@ -1936,7 +1955,7 @@ export function LiveShowPage() {
                   onToggleMute={handleToggleMute}
                   onToggleVideo={handleToggleVideo}
                   onToggleScreenShare={agora.startScreenShare}
-                  onLeave={handleLeaveStage}
+                  onLeave={handleLeave}
                 />
               )}
             </div>
@@ -2224,6 +2243,67 @@ export function LiveShowPage() {
           </div>
         )}
       </div>
+      
+      {/* Judge Voting Panel - overlay that slides in from right */}
+      {isJudgePanelOpen && (currentUserRole === 'judge' || isCeo) && (
+        <div className="fixed right-0 top-0 bottom-0 w-80 bg-gray-900/95 border-l border-neon-purple z-50 p-4 overflow-y-auto">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-neon-purple">Judge Voting Panel</h3>
+            <button onClick={() => setIsJudgePanelOpen(false)} className="text-gray-400 hover:text-white">✕</button>
+          </div>
+          
+          {/* Camera and Leave Controls */}
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={handleToggleVideo}
+              className="flex-1 btn-neon-red py-2 rounded-lg font-bold text-sm"
+            >
+              {isVideoOff ? '📹 Camera On' : '📷 Camera Off'}
+            </button>
+            <button
+              onClick={handleLeave}
+              className="flex-1 bg-gray-600 hover:bg-gray-700 py-2 rounded-lg font-bold text-sm"
+            >
+              Leave
+            </button>
+          </div>
+          
+          <p className="text-gray-400 text-sm mb-4">Vote for the performer you want to advance!</p>
+          
+          {/* Performer 1 Voting */}
+          <div className="bg-gray-800 rounded-lg p-4 mb-4">
+            <div className="flex items-center gap-3 mb-3">
+              <img src={performerBoxes[0].avatar || 'https://i.pravatar.cc/50'} alt={performerBoxes[0].username} className="w-10 h-10 rounded-full" />
+              <span className="font-bold text-white">{performerBoxes[0].username}</span>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => handleJudgeVote(0, 'yes')} className="flex-1 btn-neon-green py-2 rounded-lg font-bold">✓ YES</button>
+              <button onClick={() => handleJudgeVote(0, 'no')} className="flex-1 btn-neon-red py-2 rounded-lg font-bold">✕ NO</button>
+            </div>
+          </div>
+          
+          {/* Performer 2 Voting */}
+          <div className="bg-gray-800 rounded-lg p-4 mb-4">
+            <div className="flex items-center gap-3 mb-3">
+              <img src={performerBoxes[1].avatar || 'https://i.pravatar.cc/50'} alt={performerBoxes[1].username} className="w-10 h-10 rounded-full" />
+              <span className="font-bold text-white">{performerBoxes[1].username}</span>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => handleJudgeVote(1, 'yes')} className="flex-1 btn-neon-green py-2 rounded-lg font-bold">✓ YES</button>
+              <button onClick={() => handleJudgeVote(1, 'no')} className="flex-1 btn-neon-red py-2 rounded-lg font-bold">✕ NO</button>
+            </div>
+          </div>
+          
+          {/* Current Votes Display */}
+          <div className="bg-gray-800/50 rounded-lg p-4">
+            <h4 className="font-bold text-gray-300 mb-2">Current Scores</h4>
+            <div className="flex justify-between text-sm">
+              <span className="text-neon-green">{performerBoxes[0].username}: {performerBoxes[0].judgeVotes} votes</span>
+              <span className="text-neon-purple">{performerBoxes[1].username}: {performerBoxes[1].judgeVotes} votes</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
