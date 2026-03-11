@@ -3,7 +3,6 @@ import { supabase } from '../lib/supabase'
 import type { 
   ShowWithYouTube, 
   YouTubeBroadcastSettings, 
-  YouTubeChatPromo,
   YouTubeBroadcastResult 
 } from '../lib/supabase'
 

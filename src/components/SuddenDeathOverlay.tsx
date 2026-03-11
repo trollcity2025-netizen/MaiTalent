@@ -13,9 +13,12 @@ export function SuddenDeathOverlay({ performers, seconds, onComplete }: SuddenDe
 
   useEffect(() => {
     if (countdown <= 0) {
-      setIsActive(false)
-      onComplete?.()
-      return
+      // Use requestAnimationFrame to avoid calling setState synchronously in effect
+      const timeoutId = requestAnimationFrame(() => {
+        setIsActive(false)
+        onComplete?.()
+      })
+      return () => cancelAnimationFrame(timeoutId)
     }
 
     const timer = setTimeout(() => {
@@ -25,8 +28,6 @@ export function SuddenDeathOverlay({ performers, seconds, onComplete }: SuddenDe
     return () => clearTimeout(timer)
   }, [countdown, onComplete])
 
-  const sortedPerformers = [...performers].sort((a, b) => b.final_score - a.final_score)
-  
   // Calculate animated percentages
   const totalScore = performers.reduce((sum, p) => sum + p.final_score, 0)
   const animatedPercentages = performers.map(p => ({

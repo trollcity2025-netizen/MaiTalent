@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { 
   Users, Gift, Send, MessageCircle, AlertTriangle, Crown, Gavel,
-  Clock, SkipForward, Play, Mic, MicOff, Sparkles, Star, Video, VideoOff
+  Clock, SkipForward, Play, Mic, MicOff, Sparkles, Star, Video
 } from 'lucide-react'
 import { useAppStore } from '../store/useAppStore'
 import { supabase } from '../lib/supabase'
@@ -77,12 +77,7 @@ export function LiveShowPage() {
   
   // Check if we're in preview mode (no show ID)
   const isPreview = !id || id === 'preview'
-  
-  // Pre-generate audience silhouette heights - hundreds of people
-  const audienceHeights = useMemo(() => 
-    [10, 12, 14, 11, 15, 13, 16, 12, 14, 11, 13, 15, 12, 14, 16, 13, 15, 11, 14, 12, 16, 13, 15, 11, 14, 12, 13, 15, 16, 12, 14, 11, 13, 15, 12, 16, 14, 13, 11, 15, 10, 12, 14, 11, 15, 13, 16, 12, 14, 11, 13, 15, 12, 14, 16, 13, 15, 11, 14, 12, 16, 13, 15, 11, 14, 12, 13, 15, 16, 12, 14, 11, 13, 15, 12, 16, 14, 13, 11, 15, 10, 12, 14, 11, 15, 13, 16, 12, 14, 11, 13, 15, 12, 14, 16, 13, 15, 11, 14, 12, 16, 13, 15, 11, 14, 12, 13, 15, 16, 12, 14, 11, 13, 15, 12, 16, 14, 13, 11, 15, 10, 12, 14, 11, 15, 13, 16, 12, 14, 11, 13, 15, 12, 14, 16, 13, 15, 11, 14, 12, 16, 13, 15, 11, 14, 12, 13, 15, 16, 12, 14, 11, 13, 15, 12, 16, 14, 13, 11, 15, 10, 12, 14, 11, 15, 13, 16, 12, 14, 11, 13, 15, 12, 14, 16, 13, 15, 11, 14, 12, 16, 13, 15, 11, 14, 12, 13, 15, 16, 12, 14, 11, 13, 15, 12, 16, 14, 13, 11, 15, 10, 12, 14, 11, 15, 13, 16, 12, 14, 11, 13, 15, 12, 14, 16, 13, 15, 11, 14, 12, 16, 13, 15, 11, 14, 12, 13, 15, 16, 12, 14, 11, 13, 15, 12, 16, 14, 13, 11, 15, 10, 12, 14, 11, 15, 13, 16, 12, 14, 11, 13, 15, 12, 14, 16, 13, 15, 11, 14, 12, 16, 13, 15, 11, 14, 12, 13, 15, 16, 12, 14, 11, 13, 15, 12, 16, 14, 13, 11, 15],
-  [])
-  
+
   // Floating particles for stage effect
   const [particles, setParticles] = useState<FloatingParticle[]>([])
   
@@ -202,10 +197,6 @@ export function LiveShowPage() {
   // Timer state
   const [timer, setTimer] = useState(PERFORMANCE_DURATION)
   const [isTimerRunning, setIsTimerRunning] = useState(false)
-  
-  // Check if show is live
-  const isShowLive = showState === 'live' || isTimerRunning || showWinner
-
   const [isSuddenDeath, setIsSuddenDeath] = useState(false)
   const [suddenDeathTimer, setSuddenDeathTimer] = useState(10)
   
@@ -227,7 +218,6 @@ export function LiveShowPage() {
   
   const chatRef = useRef<HTMLDivElement>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const localVideoRef = useRef<HTMLDivElement>(null)
 
   // Agora hook - only initialize when user is actively publishing
   const agora = useAgora({
@@ -304,34 +294,9 @@ export function LiveShowPage() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isHost, isCeo])
+  }, [isHost, isCeo, handleToggleCurtains])
 
   // Judge seat handler
-  const handleJoinJudgeSeat = (seatId: number) => {
-    if (!user || (!isCeo && !isAdmin)) {
-      alert('Only judges and CEO can join as judge')
-      return
-    }
-    
-    setJudgeBoxes(prev => prev.map(judge => 
-      judge.id === seatId 
-        ? { ...judge, isJoined: true, userId: user.id, username: user.username, avatar: user.avatar || '' }
-        : judge
-    ))
-  }
-
-  const handleLeaveJudgeSeat = async (seatId: number) => {
-    await agora.leave()
-    setIsPublishingVideo(false)
-    setCurrentUserRole(null)
-    setJudgeBoxes(prev => prev.map(judge => 
-      judge.id === seatId 
-        ? { ...judge, isJoined: false }
-        : judge
-    ))
-  }
-
-  // Handle joining as host
   const handleJoinAsHost = async () => {
     if (!user) {
       alert('Please log in first!')
@@ -358,6 +323,11 @@ export function LiveShowPage() {
     setCurrentUserRole('judge')
     setIsPublishingVideo(true)
     await agora.join()
+  }
+
+  // Handle judge seat click (for empty seats)
+  const handleJoinJudgeSeat = (seatId: number) => {
+    handleJoinAsJudge(seatId)
   }
 
   // Handle joining as CEO
@@ -494,23 +464,27 @@ export function LiveShowPage() {
         setTimer(t => t - 1)
       }, 1000)
     } else if (timer === 0 && isTimerRunning) {
-      setIsTimerRunning(false)
-      // Determine winner before moving to next performer
-      // Calculate winner based on points (gifts) + judge votes
-      const perf1 = performerBoxes[0]
-      const perf2 = performerBoxes[1]
-      const score1 = perf1.gifts + (perf1.judgeVotes * 100)
-      const score2 = perf2.gifts + (perf2.judgeVotes * 100)
-      
-      if (score1 > score2) {
-        setWinner('performer1')
-      } else if (score2 > score1) {
-        setWinner('performer2')
-      } else {
-        setWinner('draw')
-      }
-      setShowWinner(true)
-      setShowState('post-show')
+      // Use requestAnimationFrame to avoid calling setState synchronously in effect
+      const timeoutId = requestAnimationFrame(() => {
+        setIsTimerRunning(false)
+        // Determine winner before moving to next performer
+        // Calculate winner based on points (gifts) + judge votes
+        const perf1 = performerBoxes[0]
+        const perf2 = performerBoxes[1]
+        const score1 = perf1.gifts + (perf1.judgeVotes * 100)
+        const score2 = perf2.gifts + (perf2.judgeVotes * 100)
+        
+        if (score1 > score2) {
+          setWinner('performer1')
+        } else if (score2 > score1) {
+          setWinner('performer2')
+        } else {
+          setWinner('draw')
+        }
+        setShowWinner(true)
+        setShowState('post-show')
+      })
+      return () => cancelAnimationFrame(timeoutId)
     }
 
     return () => {
@@ -526,8 +500,12 @@ export function LiveShowPage() {
       }, 1000)
       return () => clearInterval(ref)
     } else if (isSuddenDeath && suddenDeathTimer === 0) {
-      setIsSuddenDeath(false)
-      setSuddenDeathTimer(10)
+      // Use requestAnimationFrame to avoid calling setState synchronously in effect
+      const timeoutId = requestAnimationFrame(() => {
+        setIsSuddenDeath(false)
+        setSuddenDeathTimer(10)
+      })
+      return () => cancelAnimationFrame(timeoutId)
     }
   }, [isSuddenDeath, suddenDeathTimer])
 
@@ -621,47 +599,33 @@ export function LiveShowPage() {
   // Check user roles
   useEffect(() => {
     if (isPreview) {
-      setIsHost(true)
+      // Use requestAnimationFrame to avoid calling setState synchronously in effect
+      requestAnimationFrame(() => setIsHost(true))
     } else if (user) {
-      setIsHost(user.is_ceo || user.is_admin)
+      requestAnimationFrame(() => setIsHost(user.is_ceo || user.is_admin))
     }
   }, [user, isPreview])
 
   // Generate confetti when winner is shown
   useEffect(() => {
     if (showWinner) {
-      const particles = Array.from({ length: 50 }).map((_, i) => ({
-        id: i,
-        left: Math.random() * 100,
-        delay: Math.random() * 2,
-        duration: Math.random() * 2 + 2,
-        size: Math.random() * 10 + 5,
-        color: ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#9b59b6', '#f39c12'][Math.floor(Math.random() * 6)],
-        isCircle: Math.random() > 0.5
-      }))
-      setConfettiParticles(particles)
+      // Use requestAnimationFrame to avoid calling setState synchronously in effect
+      const timeoutId = requestAnimationFrame(() => {
+        const particles = Array.from({ length: 50 }).map((_, i) => ({
+          id: i,
+          left: Math.random() * 100,
+          delay: Math.random() * 2,
+          duration: Math.random() * 2 + 2,
+          size: Math.random() * 10 + 5,
+          color: ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#9b59b6', '#f39c12'][Math.floor(Math.random() * 6)],
+          isCircle: Math.random() > 0.5
+        }))
+        setConfettiParticles(particles)
+      })
+      return () => cancelAnimationFrame(timeoutId)
     }
   }, [showWinner])
 
-  // Calculate winner based on points (gifts) + judge votes
-  const determineWinner = () => {
-    const perf1 = performerBoxes[0]
-    const perf2 = performerBoxes[1]
-    
-    // Calculate total scores: gift points + judge votes (each judge vote = 100 points)
-    const score1 = perf1.gifts + (perf1.judgeVotes * 100)
-    const score2 = perf2.gifts + (perf2.judgeVotes * 100)
-    
-    if (score1 > score2) {
-      setWinner('performer1')
-    } else if (score2 > score1) {
-      setWinner('performer2')
-    } else {
-      setWinner('draw')
-    }
-    setShowWinner(true)
-  }
-  
   const handleStartPerformance = () => {
     if (queue.length > 0) {
       const nextTwo = queue.slice(0, 2)
@@ -1530,7 +1494,6 @@ export function LiveShowPage() {
                         {isPublishingVideo && currentUserRole === 'host' ? (
                           <AgoraVideo
                             videoTrack={agora.localVideoTrack}
-                            audioTrack={agora.localAudioTrack}
                             userId={user?.id || 'host'}
                             username={user?.username || 'Host'}
                             avatar={hostBox.avatar || undefined}
@@ -1701,7 +1664,6 @@ export function LiveShowPage() {
                         {isCeoPublishing && user?.id === ceoBox.userId ? (
                           <AgoraVideo
                             videoTrack={agora.localVideoTrack}
-                            audioTrack={agora.localAudioTrack}
                             userId={ceoBox.userId || 'ceo'}
                             username={ceoBox.username || 'CEO'}
                             avatar={ceoBox.avatar || undefined}

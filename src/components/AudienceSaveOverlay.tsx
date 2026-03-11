@@ -23,10 +23,13 @@ export function AudienceSaveOverlay({
 
   useEffect(() => {
     if (countdown <= 0) {
-      setIsActive(false)
-      const wasSaved = currentScore >= targetScore
-      onComplete?.(wasSaved)
-      return
+      // Use requestAnimationFrame to avoid calling setState synchronously in effect
+      const timeoutId = requestAnimationFrame(() => {
+        setIsActive(false)
+        const wasSaved = currentScore >= targetScore
+        onComplete?.(wasSaved)
+      })
+      return () => cancelAnimationFrame(timeoutId)
     }
 
     const timer = setTimeout(() => {

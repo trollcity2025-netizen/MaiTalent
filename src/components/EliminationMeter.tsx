@@ -20,16 +20,6 @@ export function EliminationMeter({
   const isEliminationRisk = (performer: PerformerWithScore) => 
     performer.performer_id === lowestRanked?.performer_id && !savePerformerId
 
-  const getRarityColor = (rarity: string) => {
-    switch (rarity) {
-      case 'legendary': return '#FFD700'
-      case 'epic': return '#9B59B6'
-      case 'rare': return '#3498DB'
-      case 'uncommon': return '#2ECC71'
-      default: return '#95A5A6'
-    }
-  }
-
   const getBarWidth = (percentage: number) => {
     return `${Math.max(percentage, 5)}%`
   }

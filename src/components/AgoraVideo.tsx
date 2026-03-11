@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react'
+import { ILocalVideoTrack } from 'agora-rtc-sdk-ng'
 
 interface AgoraVideoProps {
-  videoTrack?: any
-  audioTrack?: any
+  videoTrack?: ILocalVideoTrack | null
   userId: string | number
   username?: string
   avatar?: string
@@ -12,7 +12,6 @@ interface AgoraVideoProps {
 
 export function AgoraVideo({
   videoTrack,
-  audioTrack,
   userId,
   username,
   avatar,
@@ -20,22 +19,23 @@ export function AgoraVideo({
   isLocal = false
 }: AgoraVideoProps) {
   const videoRef = useRef<HTMLDivElement>(null)
+  const track = videoTrack as ILocalVideoTrack | null
 
   useEffect(() => {
-    if (videoTrack && videoRef.current) {
+    if (track && videoRef.current) {
       // Play video in the container
-      videoTrack.play(videoRef.current)
+      track.play(videoRef.current)
       
       return () => {
         // Stop video when component unmounts
         try {
-          videoTrack.stop()
-        } catch (e) {
+          track.stop()
+        } catch {
           // Ignore errors when stopping
         }
       }
     }
-  }, [videoTrack])
+  }, [track])
 
   // If no video track, show avatar
   if (!videoTrack) {

@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const PAYPAL_API_BASE = Deno.env.get('PAYPAL_MODE') === 'production' 
   ? 'https://api-m.paypal.com' 
@@ -82,7 +82,7 @@ async function sendPayout(
     // Extract error message
     let errorMessage = 'Payout failed'
     if (payoutResult.details) {
-      errorMessage = payoutResult.details.map((d: any) => d.issue || d.description).join(', ')
+      errorMessage = payoutResult.details.map((d: { issue?: string; description?: string }) => d.issue || d.description).join(', ')
     } else if (payoutResult.message) {
       errorMessage = payoutResult.message
     }
@@ -100,8 +100,8 @@ async function verifyAndPayout(
   userId: string,
   paypalEmail: string,
   tierId: number,
-  supabase: any
-): Promise<any> {
+  supabase: SupabaseClient
+): Promise<unknown> {
   const tier = payoutTiers.find(t => t.id === tierId)
   if (!tier) {
     throw new Error('Invalid payout tier')

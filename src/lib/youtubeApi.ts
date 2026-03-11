@@ -55,26 +55,6 @@ export interface YouTubeStreamResult {
 const YOUTUBE_FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/youtube-broadcast`
 
 /**
- * Get a fresh access token using the refresh token
- */
-async function getAccessToken(): Promise<string> {
-  // This would typically call a Supabase Edge Function to get a fresh token
-  // For now, we'll use the stored refresh token approach
-  const { data: settings } = await supabase
-    .from('youtube_broadcast_settings')
-    .select('channel_id, stream_key')
-    .eq('is_default', true)
-    .single()
-
-  if (!settings?.channel_id) {
-    throw new Error('YouTube channel not configured')
-  }
-
-  // The actual token refresh would happen in the Edge Function
-  return ''
-}
-
-/**
  * Create a new YouTube live broadcast
  */
 export async function createYouTubeBroadcast(

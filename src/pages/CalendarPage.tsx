@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { Clock, ChevronLeft, ChevronRight, Play, Users } from 'lucide-react'
+import { Clock, ChevronRight, Play, Users } from 'lucide-react'
 import { useUpcomingShows, useLiveShows } from '../hooks/useSupabaseData'
 import type { Show } from '../lib/supabase'
 

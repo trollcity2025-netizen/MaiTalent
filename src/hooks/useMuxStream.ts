@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 
-// Mux configuration
-const MUX_TOKEN_ID = import.meta.env.VITE_MUX_TOKEN_ID || '2f1ee120-69d2-4876-b483-882fa6468f6c'
+// Mux configuration (kept for reference, actual auth is handled server-side)
 
 export interface MuxStream {
   id: string

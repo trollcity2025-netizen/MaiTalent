@@ -81,8 +81,9 @@ export function useSeasonAuditions(seasonId: string | null) {
 
   useEffect(() => {
     if (!seasonId) {
-      setLoading(false)
-      return
+      // Use requestAnimationFrame to avoid calling setState synchronously in effect
+      const timeoutId = requestAnimationFrame(() => setLoading(false))
+      return () => cancelAnimationFrame(timeoutId)
     }
 
     const fetchAuditions = async () => {
@@ -127,8 +128,9 @@ export function useUserAudition(userId: string | null, seasonId: string | null) 
 
   useEffect(() => {
     if (!userId || !seasonId) {
-      setLoading(false)
-      return
+      // Use requestAnimationFrame to avoid calling setState synchronously in effect
+      const timeoutId = requestAnimationFrame(() => setLoading(false))
+      return () => cancelAnimationFrame(timeoutId)
     }
 
     const fetchAudition = async () => {
@@ -161,8 +163,9 @@ export function useCompetitionRounds(seasonId: string | null) {
 
   useEffect(() => {
     if (!seasonId) {
-      setLoading(false)
-      return
+      // Use requestAnimationFrame to avoid calling setState synchronously in effect
+      const timeoutId = requestAnimationFrame(() => setLoading(false))
+      return () => cancelAnimationFrame(timeoutId)
     }
 
     const fetchRounds = async () => {
@@ -190,8 +193,9 @@ export function useCurrentRound(seasonId: string | null) {
 
   useEffect(() => {
     if (!seasonId) {
-      setLoading(false)
-      return
+      // Use requestAnimationFrame to avoid calling setState synchronously in effect
+      const timeoutId = requestAnimationFrame(() => setLoading(false))
+      return () => cancelAnimationFrame(timeoutId)
     }
 
     const fetchCurrentRound = async () => {
@@ -224,8 +228,9 @@ export function useRoundPerformances(roundId: string | null) {
 
   useEffect(() => {
     if (!roundId) {
-      setLoading(false)
-      return
+      // Use requestAnimationFrame to avoid calling setState synchronously in effect
+      const timeoutId = requestAnimationFrame(() => setLoading(false))
+      return () => cancelAnimationFrame(timeoutId)
     }
 
     const fetchPerformances = async () => {
@@ -274,8 +279,9 @@ export function useLiveShowPerformers(showId: string | null) {
 
   useEffect(() => {
     if (!showId) {
-      setLoading(false)
-      return
+      // Use requestAnimationFrame to avoid calling setState synchronously in effect
+      const timeoutId = requestAnimationFrame(() => setLoading(false))
+      return () => cancelAnimationFrame(timeoutId)
     }
 
     const fetchPerformers = async () => {
@@ -346,8 +352,9 @@ export function useShowPhase(showId: string | null) {
 
   useEffect(() => {
     if (!showId) {
-      setLoading(false)
-      return
+      // Use requestAnimationFrame to avoid calling setState synchronously in effect
+      const timeoutId = requestAnimationFrame(() => setLoading(false))
+      return () => cancelAnimationFrame(timeoutId)
     }
 
     const fetchPhase = async () => {
@@ -421,8 +428,9 @@ export function useShowSuppliers(showId: string | null, performerId: string | nu
 
   useEffect(() => {
     if (!showId || !performerId) {
-      setLoading(false)
-      return
+      // Use requestAnimationFrame to avoid calling setState synchronously in effect
+      const timeoutId = requestAnimationFrame(() => setLoading(false))
+      return () => cancelAnimationFrame(timeoutId)
     }
 
     const fetchSupporters = async () => {
@@ -496,8 +504,9 @@ export function useVote(showId: string | null, performerId: string | null, userI
 
   useEffect(() => {
     if (!showId || !performerId || !userId) {
-      setLoading(false)
-      return
+      // Use requestAnimationFrame to avoid calling setState synchronously in effect
+      const timeoutId = requestAnimationFrame(() => setLoading(false))
+      return () => cancelAnimationFrame(timeoutId)
     }
 
     const checkVote = async () => {
@@ -676,8 +685,9 @@ export function useCombos(showId: string | null) {
 
   useEffect(() => {
     if (!showId) {
-      setLoading(false)
-      return
+      // Use requestAnimationFrame to avoid calling setState synchronously in effect
+      const timeoutId = requestAnimationFrame(() => setLoading(false))
+      return () => cancelAnimationFrame(timeoutId)
     }
 
     const fetchCombos = async () => {

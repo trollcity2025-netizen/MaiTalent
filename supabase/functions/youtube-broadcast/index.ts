@@ -16,7 +16,6 @@
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,14 +26,9 @@ const corsHeaders = {
 const YOUTUBE_CLIENT_ID = Deno.env.get('YOUTUBE_CLIENT_ID')!
 const YOUTUBE_CLIENT_SECRET = Deno.env.get('YOUTUBE_CLIENT_SECRET')!
 const YOUTUBE_REFRESH_TOKEN = Deno.env.get('YOUTUBE_REFRESH_TOKEN')!
-const YOUTUBE_CHANNEL_ID = Deno.env.get('YOUTUBE_CHANNEL_ID')!
 
 const YOUTUBE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3'
-
-// Supabase configuration
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
 /**
  * Get a fresh access token using the refresh token
@@ -66,7 +60,7 @@ async function getAccessToken(): Promise<string> {
 /**
  * Make an authenticated YouTube API request
  */
-async function youtubeRequest(endpoint: string, method: string, body?: object): Promise<any> {
+async function youtubeRequest(endpoint: string, method: string, body?: object): Promise<unknown> {
   const accessToken = await getAccessToken()
   
   const response = await fetch(`${YOUTUBE_API_BASE}${endpoint}`, {
@@ -195,14 +189,6 @@ async function deleteBroadcast(broadcastId: string) {
 }
 
 /**
- * Get live chat ID for a broadcast
- */
-async function getLiveChatId(broadcastId: string): Promise<string | null> {
-  const broadcast = await getBroadcast(broadcastId)
-  return broadcast?.contentDetails?.liveChatId || null
-}
-
-/**
  * Send a message to live chat
  */
 async function sendChatMessage(liveChatId: string, message: string, accessToken: string) {
@@ -237,13 +223,10 @@ serve(async (req) => {
       throw new Error('Missing authorization header')
     }
 
-    // Create Supabase client for database operations
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
-
     // Parse request body
     const { action, ...params } = await req.json()
 
-    let response: any
+    let response: unknown
 
     switch (action) {
       case 'create_broadcast': {

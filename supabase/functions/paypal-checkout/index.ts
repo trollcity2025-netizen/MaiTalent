@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const PAYPAL_API_BASE = Deno.env.get('PAYPAL_MODE') === 'production' 
   ? 'https://api-m.paypal.com' 
@@ -48,7 +48,7 @@ async function getAccessToken(): Promise<string> {
   return data.access_token
 }
 
-async function createPayPalOrder(packId: number, userId: string, supabase: any, customCoins?: number): Promise<any> {
+async function createPayPalOrder(packId: number, userId: string, supabase: SupabaseClient, customCoins?: number): Promise<unknown> {
   let pack
   let isCustom = false
   
@@ -125,7 +125,7 @@ async function createPayPalOrder(packId: number, userId: string, supabase: any, 
   return order
 }
 
-async function capturePayPalOrder(orderId: string, userId: string, supabase: any): Promise<any> {
+async function capturePayPalOrder(orderId: string, userId: string, supabase: SupabaseClient): Promise<unknown> {
   const accessToken = await getAccessToken()
 
   const response = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders/${orderId}/capture`, {
