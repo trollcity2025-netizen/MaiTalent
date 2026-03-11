@@ -1,7 +1,7 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { BadgeList } from './Badge';
-import type { BadgeType } from './Badge';
+import { useState, type FC, type MouseEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { BadgeList } from './Badge'
+import type { BadgeType } from './Badge'
 
 interface UserBadgeProps {
   username: string;
@@ -11,26 +11,26 @@ interface UserBadgeProps {
   showBadges?: boolean;
 }
 
-export const UserBadge: React.FC<UserBadgeProps> = ({
+export const UserBadge: FC<UserBadgeProps> = ({
   username,
   userId,
   badges = [],
   size = 'md',
   showBadges = true,
 }) => {
-  const navigate = useNavigate();
+  const navigate = useNavigate()
 
-  const handleClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    navigate(`/profile/${userId}`);
-  };
+  const handleClick = (e: MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    navigate(`/profile/${userId}`)
+  }
 
-  const textSizes = {
+  const textSizes: Record<string, string> = {
     sm: 'text-sm',
     md: 'text-base',
     lg: 'text-lg',
-  };
+  }
 
   return (
     <div 
@@ -38,7 +38,7 @@ export const UserBadge: React.FC<UserBadgeProps> = ({
       onClick={handleClick}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => e.key === 'Enter' && handleClick(e as unknown as React.MouseEvent)}
+      onKeyDown={(e) => e.key === 'Enter' && handleClick(e as unknown as MouseEvent)}
     >
       <span className="font-semibold text-white hover:underline">
         {username}
@@ -47,8 +47,8 @@ export const UserBadge: React.FC<UserBadgeProps> = ({
         <BadgeList badges={badges} size={size === 'lg' ? 'md' : 'sm'} maxShow={2} />
       )}
     </div>
-  );
-};
+  )
+}
 
 interface UserBadgeWithAdminProps {
   username: string;
@@ -60,7 +60,7 @@ interface UserBadgeWithAdminProps {
   showBadges?: boolean;
 }
 
-export const UserBadgeWithAdmin: React.FC<UserBadgeWithAdminProps> = ({
+export const UserBadgeWithAdmin: FC<UserBadgeWithAdminProps> = ({
   username,
   userId,
   badges = [],
@@ -69,31 +69,31 @@ export const UserBadgeWithAdmin: React.FC<UserBadgeWithAdminProps> = ({
   size = 'md',
   showBadges = true,
 }) => {
-  const navigate = useNavigate();
-  const [showMenu, setShowMenu] = React.useState(false);
+  const navigate = useNavigate()
+  const [showMenu, setShowMenu] = useState(false)
 
-  const handleClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    navigate(`/profile/${userId}`);
-  };
+  const handleClick = (e: MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    navigate(`/profile/${userId}`)
+  }
 
-  const handleAdminClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setShowMenu(!showMenu);
-  };
+  const handleAdminClick = (e: MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setShowMenu(!showMenu)
+  }
 
   const handleAction = (action: 'view_profile' | 'disable_chat' | 'disable_payouts' | 'disable_gifts' | 'manage_badges') => {
-    onAdminAction?.(action, userId);
-    setShowMenu(false);
-  };
+    onAdminAction?.(action, userId)
+    setShowMenu(false)
+  }
 
-  const textSizes = {
+  const textSizes: Record<string, string> = {
     sm: 'text-sm',
     md: 'text-base',
     lg: 'text-lg',
-  };
+  }
 
   return (
     <div className="relative inline-flex items-center gap-2">
@@ -102,7 +102,7 @@ export const UserBadgeWithAdmin: React.FC<UserBadgeWithAdminProps> = ({
         onClick={handleClick}
         role="button"
         tabIndex={0}
-        onKeyDown={(e) => e.key === 'Enter' && handleClick(e as unknown as React.MouseEvent)}
+        onKeyDown={(e) => e.key === 'Enter' && handleClick(e as unknown as MouseEvent)}
       >
         <span className="font-semibold text-white hover:underline">
           {username}
@@ -160,7 +160,7 @@ export const UserBadgeWithAdmin: React.FC<UserBadgeWithAdminProps> = ({
         </>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default UserBadge;
+export default UserBadge

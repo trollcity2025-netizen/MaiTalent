@@ -602,7 +602,7 @@ export function LiveShowPage() {
       // Use requestAnimationFrame to avoid calling setState synchronously in effect
       requestAnimationFrame(() => setIsHost(true))
     } else if (user) {
-      requestAnimationFrame(() => setIsHost(user.is_ceo || user.is_admin))
+      requestAnimationFrame(() => setIsHost(Boolean(user?.is_ceo) || Boolean(user?.is_admin)))
     }
   }, [user, isPreview])
 

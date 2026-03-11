@@ -14,14 +14,16 @@ export interface User {
   talent_category: string
   followers: number
   following: number
-  coin_balance: number
-  total_earnings: number
-  is_admin: boolean
-  is_ceo: boolean
-  is_verified: boolean
-  is_performer: boolean
-  paypal_email: string | null
-  paypal_verified: boolean
+  
+  coin_balance?: number
+  total_earnings?: number
+  is_admin?: boolean
+  is_ceo?: boolean
+  is_verified?: boolean
+  is_performer?: boolean
+  paypal_email?: string | null
+  paypal_verified?: boolean
+  
   created_at: string
 }
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import type { FC } from 'react'
 
 export type BadgeType = 
   | 'ceo' 
@@ -87,7 +87,7 @@ const iconSizes = {
   lg: 'text-lg',
 };
 
-export const Badge: React.FC<BadgeProps> = ({ type, size = 'md', showLabel = true }) => {
+export const Badge: FC<BadgeProps> = ({ type, size = 'md', showLabel = true }) => {
   const config = badgeConfig[type];
 
   if (!config) {
@@ -116,7 +116,7 @@ interface BadgeListProps {
   maxShow?: number;
 }
 
-export const BadgeList: React.FC<BadgeListProps> = ({ badges, size = 'sm', maxShow = 3 }) => {
+export const BadgeList: FC<BadgeListProps> = ({ badges, size = 'sm', maxShow = 3 }) => {
   if (!badges || badges.length === 0) {
     return null;
   }

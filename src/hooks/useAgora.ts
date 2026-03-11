@@ -1,5 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import AgoraRTC from 'agora-rtc-sdk-ng'
+import type {
+  ILocalVideoTrack,
+  ILocalAudioTrack,
+  ICameraVideoTrack,
+  IMicrophoneAudioTrack
+} from 'agora-rtc-sdk-ng'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AgoraTrack = any
@@ -40,6 +46,10 @@ export interface UseAgoraReturn {
   muteVideo: () => void
   unmuteVideo: () => void
   
+  // Mute states
+  isMutedAudio: boolean
+  isMutedVideo: boolean
+  
   // Screen share
   isScreenSharing: boolean
   startScreenShare: () => Promise<void>
@@ -62,10 +72,12 @@ export function useAgora(options: UseAgoraOptions): UseAgoraReturn {
   const [remoteUsers, setRemoteUsers] = useState<Map<string, AgoraUser>>(new Map())
   const [isJoined, setIsJoined] = useState(false)
   const [isPublishing, setIsPublishing] = useState(false)
-  const [localVideoTrack, setLocalVideoTrack] = useState<AgoraTrack>(null)
-  const [localAudioTrack, setLocalAudioTrack] = useState<AgoraTrack>(null)
+  const [localVideoTrack, setLocalVideoTrack] = useState<ILocalVideoTrack | null>(null)
+  const [localAudioTrack, setLocalAudioTrack] = useState<ILocalAudioTrack | null>(null)
   const [isScreenSharing, setIsScreenSharing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isMutedAudio, setIsMutedAudio] = useState(false)
+  const [isMutedVideo, setIsMutedVideo] = useState(false)
 
   // Generate token (simplified - in production, this should come from backend)
   const generateToken = useCallback(async (): Promise<string> => {
@@ -120,15 +132,19 @@ export function useAgora(options: UseAgoraOptions): UseAgoraReturn {
     try {
       setError(null)
       
-      // Create local tracks
-      const [videoTrack, audioTrack] = await AgoraRTC.createMicrophoneAndCameraTracks()
+      // Create local tracks - createMicrophoneAndCameraTracks returns [audioTrack, videoTrack]
+      const [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks()
       
-      localVideoRef.current = videoTrack
-      localAudioRef.current = audioTrack
+      // Assign correctly: videoTrack for video, audioTrack for audio
+      const camTrack = videoTrack as ICameraVideoTrack
+      const micTrack = audioTrack as IMicrophoneAudioTrack
+      
+      localVideoRef.current = camTrack
+      localAudioRef.current = micTrack
       
       // Update state for rendering
-      setLocalVideoTrack(videoTrack)
-      setLocalAudioTrack(audioTrack)
+      setLocalVideoTrack(camTrack)
+      setLocalAudioTrack(micTrack)
       
       // Get token
       const token = await generateToken()
@@ -142,7 +158,8 @@ export function useAgora(options: UseAgoraOptions): UseAgoraReturn {
       )
       
       // Publish local tracks
-      await clientRef.current.publish([videoTrack, audioTrack])
+      const tracks = [videoTrack, audioTrack].filter(Boolean)
+      await clientRef.current.publish(tracks as any)
       
       isJoinedRef.current = true
       setIsJoined(true)
@@ -197,12 +214,14 @@ export function useAgora(options: UseAgoraOptions): UseAgoraReturn {
   const muteAudio = useCallback(() => {
     if (localAudioRef.current) {
       localAudioRef.current.setEnabled(false)
+      setIsMutedAudio(true)
     }
   }, [])
   
   const unmuteAudio = useCallback(() => {
     if (localAudioRef.current) {
       localAudioRef.current.setEnabled(true)
+      setIsMutedAudio(false)
     }
   }, [])
 
@@ -210,12 +229,14 @@ export function useAgora(options: UseAgoraOptions): UseAgoraReturn {
   const muteVideo = useCallback(() => {
     if (localVideoRef.current) {
       localVideoRef.current.setEnabled(false)
+      setIsMutedVideo(true)
     }
   }, [])
   
   const unmuteVideo = useCallback(() => {
     if (localVideoRef.current) {
       localVideoRef.current.setEnabled(true)
+      setIsMutedVideo(false)
     }
   }, [])
 
@@ -366,6 +387,8 @@ export function useAgora(options: UseAgoraOptions): UseAgoraReturn {
     unmuteAudio,
     muteVideo,
     unmuteVideo,
+    isMutedAudio,
+    isMutedVideo,
     isScreenSharing,
     startScreenShare,
     stopScreenShare,
