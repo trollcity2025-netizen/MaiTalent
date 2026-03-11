@@ -213,7 +213,7 @@ export function LiveShowPage() {
   const [isPublishingVideo, setIsPublishingVideo] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [isVideoOff, setIsVideoOff] = useState(false)
-  const [currentUserRole, setCurrentUserRole] = useState<'host' | 'judge' | 'performer' | null>(null)
+  const [currentUserRole, setCurrentUserRole] = useState<'host' | 'judge' | 'performer' | 'ceo' | null>(null)
   
   // Agora channel name
   const agoraChannelName = id ? `show-${id}` : 'show-preview'
