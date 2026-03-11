@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Mail, Lock, Eye, EyeOff, Loader2, Sparkles, AlertCircle, CheckCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
@@ -7,6 +7,7 @@ type AuthMode = 'login' | 'signup' | 'forgot-password' | 'reset-password'
 
 export function AuthPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [mode, setMode] = useState<AuthMode>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -15,6 +16,14 @@ export function AuthPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
+
+  // Check for mode in URL params
+  useEffect(() => {
+    const modeParam = searchParams.get('mode')
+    if (modeParam === 'reset-password') {
+      setMode('reset-password')
+    }
+  }, [searchParams])
 
   // Check if user is already logged in and has accepted terms
   // Only redirect if user is logged in and trying to access auth page (not for signup flow)
@@ -93,7 +102,7 @@ export function AuthPage() {
         navigate('/terms', { state: { email, password } })
       } else if (mode === 'forgot-password') {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/auth?mode=reset-password`,
+          redirectTo: 'https://maitalen.fun/reset-password',
         })
         if (error) throw error
         setSuccess('Password reset link sent! Check your email.')

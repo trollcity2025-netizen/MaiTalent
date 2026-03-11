@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams, useNavigate } from 'react-router-dom'
 import { Users, Play, Settings, Plus, Award, Video, Loader2, Check, Camera, Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAppStore } from '../store/useAppStore'
@@ -24,6 +24,7 @@ interface Achievement {
 export function ProfilePage() {
   const location = useLocation()
   const params = useParams()
+  const navigate = useNavigate()
   const { user: storeUser, setUser } = useAppStore()
   const [activeTab, setActiveTab] = useState<'performances' | 'clips' | 'achievements' | 'followers'>('performances')
   const [isOwnProfile, setIsOwnProfile] = useState(false)
@@ -285,6 +286,11 @@ export function ProfilePage() {
       })
 
       setIsEditing(false)
+      
+      // For new users, redirect to home after completing profile
+      if (isNewUser) {
+        navigate('/')
+      }
     } catch (error) {
       console.error('Error saving profile:', error)
       alert('Failed to save profile. Please try again.')
