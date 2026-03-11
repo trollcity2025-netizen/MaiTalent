@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Home, Radio, Tv, Mic, Trophy, Settings, ChevronLeft, ChevronRight, ShoppingBag, CreditCard, MessageCircle, Shield, Crown, DollarSign, Check, Calendar } from 'lucide-react'
+import { Home, Radio, Tv, Mic, Trophy, Settings, ChevronLeft, ChevronRight, ShoppingBag, CreditCard, MessageCircle, Shield, Crown, DollarSign, Check, Calendar, Users } from 'lucide-react'
 import { useAppStore } from '../store/useAppStore'
 import { useUserRole } from '../hooks/useUserRole'
 import { useState, useRef, useEffect } from 'react'
@@ -19,6 +19,7 @@ const staticNavItems = [
   { path: '/champions', icon: Crown, label: '👑 Hall of Champions' },
   { path: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
   { path: '/chats', icon: MessageCircle, label: '⭐ Mai Chats', highlight: true },
+  { path: '/fans', icon: Users, label: '👥 Fans', highlight: false },
   { path: '/settings', icon: Settings, label: 'Settings' },
 ]
 

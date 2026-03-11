@@ -27,6 +27,12 @@ export function Header() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [showNotifications, setShowNotifications] = useState(false)
   const notificationRef = useRef<HTMLDivElement>(null)
+  
+  // Search state
+  const [showSearchResults, setShowSearchResults] = useState(false)
+  const [searchResults, setSearchResults] = useState<Array<{id: string, username: string, avatar: string}>>([])
+  const [searching, setSearching] = useState(false)
+  const searchRef = useRef<HTMLDivElement>(null)
 
   // Listen for auth state changes
   useEffect(() => {
@@ -153,6 +159,49 @@ export function Header() {
     }
   }
 
+  // Live search effect - fetch results after 3 characters
+  useEffect(() => {
+    const searchUsers = async () => {
+      if (searchQuery.length >= 3) {
+        setSearching(true)
+        setShowSearchResults(true)
+        try {
+          const { data, error } = await supabase
+            .from('users')
+            .select('id, username, avatar')
+            .ilike('username', `${searchQuery}%`)
+            .limit(10)
+
+          if (error) throw error
+          setSearchResults(data || [])
+        } catch (err) {
+          console.error('Search error:', err)
+          setSearchResults([])
+        } finally {
+          setSearching(false)
+        }
+      } else {
+        setShowSearchResults(false)
+        setSearchResults([])
+      }
+    }
+
+    const debounce = setTimeout(searchUsers, 300)
+    return () => clearTimeout(debounce)
+  }, [searchQuery])
+
+  // Close search results when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowSearchResults(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   const handleLogout = async () => {
     await supabase.auth.signOut()
     logout()
@@ -220,18 +269,67 @@ export function Header() {
           </div>
 
           {/* Center - Search */}
-          <form onSubmit={handleSearch} className="flex-1 max-w-xl mx-8 hidden md:block">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search shows, performers..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-10 pl-10 pr-4 rounded-full input-neon"
-              />
-            </div>
-          </form>
+          <div className="flex-1 max-w-xl mx-8 hidden md:block" ref={searchRef}>
+            <form onSubmit={handleSearch} className="relative">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search shows, performers..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => searchQuery.length >= 3 && setShowSearchResults(true)}
+                  className="w-full h-10 pl-10 pr-4 rounded-full input-neon"
+                />
+              </div>
+
+              {/* Search Results Dropdown */}
+              {showSearchResults && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900 border border-gray-700 rounded-lg overflow-hidden z-50 max-h-80 overflow-y-auto">
+                  {searching ? (
+                    <div className="p-4 text-center text-gray-400">
+                      Searching...
+                    </div>
+                  ) : searchResults.length > 0 ? (
+                    <div>
+                      {searchResults.map(result => (
+                        <button
+                          key={result.id}
+                          onClick={() => {
+                            navigate(`/profile/${result.id}`)
+                            setShowSearchResults(false)
+                            setSearchQuery('')
+                          }}
+                          className="w-full p-3 flex items-center gap-3 hover:bg-gray-800 transition-colors border-b border-gray-800"
+                        >
+                          <div className="w-10 h-10 rounded-full bg-gray-700 overflow-hidden flex items-center justify-center">
+                            {result.avatar ? (
+                              <img src={result.avatar} alt={result.username} className="w-full h-full object-cover" />
+                            ) : (
+                              <User className="w-5 h-5 text-gray-400" />
+                            )}
+                          </div>
+                          <span className="text-white">{result.username}</span>
+                        </button>
+                      ))}
+                      {searchQuery.length >= 3 && (
+                        <button
+                          type="submit"
+                          className="w-full p-3 text-center text-neon-yellow hover:bg-gray-800 transition-colors border-t border-gray-700"
+                        >
+                          View all results for "{searchQuery}"
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-4 text-center text-gray-400">
+                      No results found
+                    </div>
+                  )}
+                </div>
+              )}
+            </form>
+          </div>
 
           {/* Right - Actions */}
           <div className="flex items-center gap-3">

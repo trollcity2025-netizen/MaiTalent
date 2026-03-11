@@ -3,6 +3,35 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { Check, ChevronDown, Loader2, AlertCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
+// IP Ban check function
+async function checkIPBan(ipAddress: string): Promise<{ banned: boolean; reason?: string }> {
+  try {
+    const { data, error } = await supabase
+      .from('banned_ips')
+      .select('*')
+      .eq('ip_address', ipAddress)
+      .eq('is_active', true)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error checking IP ban:', error);
+      return { banned: false };
+    }
+
+    if (data) {
+      if (data.expires_at && new Date(data.expires_at) < new Date()) {
+        return { banned: false };
+      }
+      return { banned: true, reason: data.reason };
+    }
+
+    return { banned: false };
+  } catch (err) {
+    console.error('IP ban check error:', err);
+    return { banned: false };
+  }
+}
+
 const TERMS_VERSION = '1.0.0'
 
 const termsContent = `
@@ -139,11 +168,35 @@ export function TermsPage() {
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [dateOfBirth, setDateOfBirth] = useState('')
+  const [dobError, setDobError] = useState<string | null>(null)
+  const [isBanned, setIsBanned] = useState(false)
+  const [banReason, setBanReason] = useState<string>('')
   const termsRef = useRef<HTMLDivElement>(null)
   
   // Get signup data from navigation state
   const signupData = location.state as SignupData | null
   const isNewUser = !!signupData?.email
+
+  // Check IP ban on page load
+  useEffect(() => {
+    const checkBan = async () => {
+      try {
+        const ipResponse = await fetch('https://api.ipify.org?format=json')
+        const ipData = await ipResponse.json()
+        const banResult = await checkIPBan(ipData.ip)
+        
+        if (banResult.banned) {
+          setIsBanned(true)
+          setBanReason(banResult.reason || 'Your IP address has been banned from this platform.')
+        }
+      } catch (err) {
+        console.warn('Could not check IP ban:', err)
+      }
+    }
+
+    checkBan()
+  }, [])
 
   // Track scroll position
   useEffect(() => {
@@ -174,6 +227,33 @@ export function TermsPage() {
 
   const handleAccept = async () => {
     if (!isButtonEnabled) return
+    
+    // Validate date of birth for new users
+    if (isNewUser && signupData) {
+      // Check DOB format MM-DD-YYYY
+      const dobRegex = /^(\d{2})-(\d{2})-(\d{4})$/
+      if (!dateOfBirth.match(dobRegex)) {
+        setDobError('Please enter your date of birth in format MM-DD-YYYY')
+        return
+      }
+      
+      // Parse and validate the date
+      const [, month, day, year] = dateOfBirth.match(dobRegex) || []
+      const dob = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+      const today = new Date()
+      let age = today.getFullYear() - dob.getFullYear()
+      const monthDiff = today.getMonth() - dob.getMonth()
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+        age--
+      }
+      
+      if (age < 18) {
+        setDobError('You must be at least 18 years old to use this platform.')
+        return
+      }
+      
+      setDobError(null)
+    }
 
     setLoading(true)
     setError(null)
@@ -218,14 +298,15 @@ export function TermsPage() {
             talent_category: '',
             followers: 0,
             following: 0,
-            coin_balance: 0,
+            coin_balance: 25,
             total_earnings: 0,
             is_admin: false,
             is_ceo: false,
             is_verified: false,
             is_performer: false,
             terms_accepted: true,
-            terms_accepted_at: new Date().toISOString()
+            terms_accepted_at: new Date().toISOString(),
+            date_of_birth: isNewUser && dateOfBirth ? dateOfBirth : null
           })
         
         if (insertError) {
@@ -280,6 +361,22 @@ export function TermsPage() {
     } catch {
       return 'unknown'
     }
+  }
+
+  // Show banned message if IP is banned
+  if (isBanned) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <AlertCircle className="w-10 h-10 text-red-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-red-500 mb-4">Access Denied</h1>
+          <p className="text-gray-400 max-w-md">{banReason}</p>
+          <p className="text-gray-500 text-sm mt-4">Please contact support if you believe this is an error.</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -355,6 +452,43 @@ export function TermsPage() {
           <div className="mb-4 p-4 bg-red-500/20 border border-red-500/50 rounded-lg flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
             <span className="text-red-400 text-sm">{error}</span>
+          </div>
+        )}
+
+        {/* Date of Birth Input for New Users */}
+        {isNewUser && (
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Date of Birth *
+            </label>
+            <input
+              type="text"
+              value={dateOfBirth}
+              onChange={(e) => {
+                let value = e.target.value.replace(/[^0-9-]/g, '')
+                // Auto-add dashes
+                if (value.length === 2 && !value.includes('-')) {
+                  value = value + '-'
+                }
+                if (value.length === 5 && value.split('-').length === 2) {
+                  value = value + '-'
+                }
+                // Limit to 10 characters
+                if (value.length <= 10) {
+                  setDateOfBirth(value)
+                }
+                setDobError(null)
+              }}
+              placeholder="MM-DD-YYYY"
+              maxLength={10}
+              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:border-neon-gold focus:outline-none"
+            />
+            {dobError && (
+              <p className="text-red-400 text-sm mt-1">{dobError}</p>
+            )}
+            <p className="text-gray-500 text-xs mt-1">
+              You must be 18 or older to use this platform. Format: MM-DD-YYYY
+            </p>
           </div>
         )}
 

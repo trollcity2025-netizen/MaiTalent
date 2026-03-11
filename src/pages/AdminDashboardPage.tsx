@@ -2,12 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { Badge } from '../components/Badge';
 import type { BadgeType } from '../components/Badge';
+import { VideoPlayer } from '../components/VideoPlayer';
 import { useAppStore } from '../store/useAppStore';
 import { useNavigate } from 'react-router-dom';
 import { PayoutAllModal } from '../components/PayoutAllModal';
-import { Globe, MessageSquare } from 'lucide-react';
+import { Globe, MessageSquare, Play, X } from 'lucide-react';
 
-type TabType = 'judge_applications' | 'users' | 'settings' | 'badges' | 'payouts' | 'ip_ban' | 'support_tickets';
+type TabType = 'judge_applications' | 'host_applications' | 'performer_applications' | 'users' | 'settings' | 'badges' | 'payouts' | 'ip_ban' | 'support_tickets';
 
 interface JudgeApplication {
   id: string;
@@ -28,6 +29,54 @@ interface JudgeApplication {
   };
 }
 
+interface HostApplication {
+  id: string;
+  user_id: string;
+  full_name: string;
+  experience: string;
+  channel_name: string;
+  subscriber_count: number;
+  content_links: string;
+  status: 'pending' | 'approved' | 'rejected';
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  notes: string | null;
+  created_at: string;
+  user?: {
+    username: string;
+    email: string;
+    avatar: string;
+  };
+}
+
+interface PerformerApplication {
+  id: string;
+  user_id: string;
+  full_name: string;
+  date_of_birth: string;
+  email: string;
+  phone: string | null;
+  talent_category: string;
+  bio: string | null;
+  video_url: string | null;
+  availability: string | null;
+  paypal_email: string;
+  paypal_verified: boolean;
+  status: 'pending' | 'approved' | 'denied' | 'bypassed';
+  denial_reason: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  attempts_count: number;
+  bypassed_by: string | null;
+  bypassed_at: string | null;
+  created_at: string;
+  user?: {
+    username: string;
+    email: string;
+    avatar: string;
+  };
+}
+
 interface UserRecord {
   id: string;
   username: string;
@@ -35,6 +84,7 @@ interface UserRecord {
   avatar: string;
   is_admin: boolean;
   is_ceo: boolean;
+  is_host: boolean;
   coin_balance: number;
   created_at: string;
   badges?: { badge_type: BadgeType }[];
@@ -66,6 +116,8 @@ export const AdminDashboardPage: React.FC = () => {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('judge_applications');
   const [judgeApplications, setJudgeApplications] = useState<JudgeApplication[]>([]);
+  const [hostApplications, setHostApplications] = useState<HostApplication[]>([]);
+  const [performerApplications, setPerformerApplications] = useState<PerformerApplication[]>([]);
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [settings, setSettings] = useState<PlatformSettings>({
     chat_enabled: true,
@@ -86,6 +138,16 @@ export const AdminDashboardPage: React.FC = () => {
   const [newBanExpiry, setNewBanExpiry] = useState('');
   const [banningUser, setBanningUser] = useState(false);
   const [selectedBanUser, setSelectedBanUser] = useState<string>('');
+  
+  // Video modal state
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [selectedVideoUrl, setSelectedVideoUrl] = useState<string>('');
+  const [selectedPerformer, setSelectedPerformer] = useState<PerformerApplication | null>(null);
+  
+  // Show queue state
+  const [availableShows, setAvailableShows] = useState<Array<{id: string, title: string}>>([]);
+  const [selectedShowId, setSelectedShowId] = useState<string>('');
+  const [addingToQueue, setAddingToQueue] = useState(false);
   
   // Support tickets state
   const [supportTickets, setSupportTickets] = useState<Array<{
@@ -131,6 +193,24 @@ export const AdminDashboardPage: React.FC = () => {
     setSelectedUser(null);
   };
 
+  // Fetch fresh user data from database when managing a user
+  const handleManageUser = async (user: UserRecord) => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select(`*, badges:user_badges(badge_type)`)
+        .eq('id', user.id)
+        .single();
+
+      if (error) throw error;
+      setSelectedUser(data);
+    } catch (err) {
+      console.error('Error fetching user data:', err);
+      // Fallback to cached data if fetch fails
+      setSelectedUser(user);
+    }
+  };
+
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
@@ -160,18 +240,105 @@ export const AdminDashboardPage: React.FC = () => {
         })) || [];
 
         setJudgeApplications(mergedData);
-      } else if (activeTab === 'users') {
-        const { data, error } = await supabase
-          .from('users')
-          .select(`
-            *,
-            badges:user_badges(badge_type)
-          `)
-          .order('created_at', { ascending: false })
-          .limit(50);
+      } else if (activeTab === 'host_applications') {
+        // Query host applications
+        const { data: hostApps, error: hostError } = await supabase
+          .from('host_applications')
+          .select('*')
+          .order('created_at', { ascending: false });
 
-        if (error) throw error;
-        setUsers(data || []);
+        if (hostError) throw hostError;
+
+        // Get unique user IDs
+        const hostUserIds = [...new Set(hostApps?.map(a => a.user_id).filter(Boolean) || [])];
+
+        // Fetch user data for these IDs
+        const { data: hostUserData } = await supabase
+          .from('users')
+          .select('id, username, email, avatar')
+          .in('id', hostUserIds);
+
+        // Join the data
+        const hostUserMap = new Map(hostUserData?.map(u => [u.id, u]) || []);
+        const mergedHostData = hostApps?.map(app => ({
+          ...app,
+          user: hostUserMap.get(app.user_id)
+        })) || [];
+
+        setHostApplications(mergedHostData);
+      } else if (activeTab === 'performer_applications') {
+        // Query performer applications
+        const { data: perfApps, error: perfError } = await supabase
+          .from('performer_applications')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (perfError) throw perfError;
+
+        // Get unique user IDs
+        const perfUserIds = [...new Set(perfApps?.map(a => a.user_id).filter(Boolean) || [])];
+
+        // Fetch user data for these IDs
+        const { data: perfUserData } = await supabase
+          .from('users')
+          .select('id, username, email, avatar')
+          .in('id', perfUserIds);
+
+        // Join the data
+        const perfUserMap = new Map(perfUserData?.map(u => [u.id, u]) || []);
+        const mergedPerfData = perfApps?.map(app => ({
+          ...app,
+          user: perfUserMap.get(app.user_id)
+        })) || [];
+
+        setPerformerApplications(mergedPerfData);
+      } else if (activeTab === 'users') {
+        try {
+          // First try to get all users
+          const { data: allUsers, error: usersError } = await supabase
+            .from('users')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+          if (usersError) {
+            console.error('Error fetching users:', usersError);
+            // Try a simpler query without filters
+            const { data: simpleUsers, error: simpleError } = await supabase
+              .from('users')
+              .select('id, username, email, avatar, is_ceo, is_admin, is_host, coin_balance, created_at');
+            
+            if (simpleError) {
+              console.error('Error in simple query:', simpleError);
+              throw simpleError;
+            }
+            setUsers(simpleUsers || []);
+          } else {
+            // Try to get badges separately
+            const userIds = allUsers?.map(u => u.id) || [];
+            const { data: allBadges } = await supabase
+              .from('user_badges')
+              .select('user_id, badge_type')
+              .in('user_id', userIds);
+
+            const badgeMap = new Map();
+            allBadges?.forEach(b => {
+              if (!badgeMap.has(b.user_id)) {
+                badgeMap.set(b.user_id, []);
+              }
+              badgeMap.get(b.user_id).push({ badge_type: b.badge_type });
+            });
+
+            const usersWithBadges = allUsers?.map(u => ({
+              ...u,
+              badges: badgeMap.get(u.id) || []
+            })) || [];
+
+            setUsers(usersWithBadges);
+          }
+        } catch (err) {
+          console.error('Error in users tab:', err);
+          setUsers([]);
+        }
       } else if (activeTab === 'settings') {
         const { data, error } = await supabase
           .from('platform_settings')
@@ -263,6 +430,93 @@ export const AdminDashboardPage: React.FC = () => {
     }
   };
 
+  const handleHostApplication = async (applicationId: string, status: 'approved' | 'rejected') => {
+    try {
+      // Update application status
+      const { error } = await supabase
+        .from('host_applications')
+        .update({
+          status,
+          reviewed_at: new Date().toISOString(),
+          notes: reviewNotes,
+        })
+        .eq('id', applicationId);
+
+      if (error) throw error;
+
+      // If approved, add host badge to user
+      if (status === 'approved') {
+        const application = hostApplications.find(a => a.id === applicationId);
+        if (application) {
+          await supabase
+            .from('user_badges')
+            .insert({
+              user_id: application.user_id,
+              badge_type: 'host',
+            });
+        }
+      }
+
+      // Reload data
+      loadData();
+      setReviewNotes('');
+    } catch (err) {
+      console.error('Error handling host application:', err);
+    }
+  };
+
+  const handlePerformerApplication = async (
+    applicationId: string,
+    status: 'approved' | 'denied' | 'bypassed',
+    denialReason?: string
+  ) => {
+    try {
+      const updateData: Record<string, unknown> = {
+        status,
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: user?.id,
+      };
+
+      if (status === 'denied') {
+        updateData.denial_reason = denialReason || reviewNotes;
+      }
+
+      if (status === 'bypassed' && user?.is_ceo) {
+        updateData.bypassed_by = user.id;
+        updateData.bypassed_at = new Date().toISOString();
+        updateData.status = 'approved';
+      }
+
+      const { error } = await supabase
+        .from('performer_applications')
+        .update(updateData)
+        .eq('id', applicationId);
+
+      if (error) throw error;
+
+      // If approved or bypassed, add performer badge to user
+      if (status === 'approved' || status === 'bypassed') {
+        const application = performerApplications.find(a => a.id === applicationId);
+        if (application) {
+          await supabase
+            .from('user_badges')
+            .upsert({
+              user_id: application.user_id,
+              badge_type: 'performer',
+            }, {
+              onConflict: 'user_id,badge_type'
+            });
+        }
+      }
+
+      // Reload data
+      loadData();
+      setReviewNotes('');
+    } catch (err) {
+      console.error('Error handling performer application:', err);
+    }
+  };
+
   const handleSettingChange = async (key: string, value: boolean) => {
     try {
       await supabase
@@ -340,6 +594,77 @@ export const AdminDashboardPage: React.FC = () => {
     }
   };
 
+  // Fetch available shows for queue
+  const fetchAvailableShows = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('shows')
+        .select('id, title')
+        .in('status', ['scheduled', 'live'])
+        .order('title');
+
+      if (error) throw error;
+      setAvailableShows(data || []);
+    } catch (err) {
+      console.error('Error fetching shows:', err);
+    }
+  };
+
+  // Add approved performer to show queue
+  const handleAddToQueue = async (applicationId: string) => {
+    if (!selectedShowId || !selectedPerformer) return;
+
+    setAddingToQueue(true);
+    try {
+      // Get the next position in queue
+      const { data: existingQueue } = await supabase
+        .from('show_queue')
+        .select('position')
+        .eq('show_id', selectedShowId)
+        .order('position', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const nextPosition = existingQueue ? existingQueue.position + 1 : 1;
+
+      // Add to queue with performer_application_id
+      const { error: queueError } = await supabase
+        .from('show_queue')
+        .insert({
+          show_id: selectedShowId,
+          user_id: selectedPerformer.user_id,
+          position: nextPosition,
+          status: 'waiting',
+          performer_application_id: applicationId,
+        });
+
+      if (queueError) throw queueError;
+
+      // Reset state
+      setSelectedShowId('');
+      setSelectedPerformer(null);
+      setShowVideoModal(false);
+
+      alert('Performer added to queue successfully!');
+      loadData();
+    } catch (err) {
+      console.error('Error adding to queue:', err);
+      alert('Failed to add to queue. Please try again.');
+    } finally {
+      setAddingToQueue(false);
+    }
+  };
+
+  // Open video modal for a performer
+  const openVideoModal = (performer: PerformerApplication) => {
+    if (performer.video_url) {
+      setSelectedVideoUrl(performer.video_url);
+      setSelectedPerformer(performer);
+      setShowVideoModal(true);
+      fetchAvailableShows();
+    }
+  };
+
   const addBadgeToUser = async (userId: string, badgeType: BadgeType) => {
     try {
       await supabase
@@ -359,6 +684,8 @@ export const AdminDashboardPage: React.FC = () => {
 
   const tabs = [
     { id: 'judge_applications' as TabType, label: 'Judge Apps', icon: '📋' },
+    { id: 'host_applications' as TabType, label: 'Host Apps', icon: '🎤' },
+    { id: 'performer_applications' as TabType, label: 'Performer Apps', icon: '⭐' },
     { id: 'users' as TabType, label: 'Users', icon: '👥' },
     { id: 'badges' as TabType, label: 'Badges', icon: '🏅' },
     { id: 'payouts' as TabType, label: 'Payouts', icon: '💰' },
@@ -439,7 +766,7 @@ export const AdminDashboardPage: React.FC = () => {
                   </button>
                 </div>
                 {judgeApplications.length === 0 ? (
-                  <p className="text-gray-400 text-center py-8">No applications yet</p>
+                  <p className="text-gray-400 text-center py-8">No judge applications yet</p>
                 ) : (
                   judgeApplications.map(app => (
                     <div
@@ -521,10 +848,266 @@ export const AdminDashboardPage: React.FC = () => {
               </div>
             )}
 
+            {/* Host Applications Tab */}
+            {activeTab === 'host_applications' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold">Host Applications</h2>
+                  <button
+                    onClick={loadData}
+                    disabled={loading}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm font-medium disabled:opacity-50"
+                  >
+                    🔄 Fetch All
+                  </button>
+                </div>
+                {hostApplications.length === 0 ? (
+                  <p className="text-gray-400 text-center py-8">No host applications yet</p>
+                ) : (
+                  hostApplications.map(app => (
+                    <div
+                      key={app.id}
+                      className="bg-gray-900 border border-gray-700 rounded-xl p-4"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-full bg-gray-700 overflow-hidden">
+                            {app.user?.avatar ? (
+                              <img
+                                src={app.user.avatar}
+                                alt={app.user.username}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">🎤</div>
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-semibold">{app.full_name}</p>
+                            <p className="text-sm text-gray-400">@{app.user?.username}</p>
+                          </div>
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                          app.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                          app.status === 'approved' ? 'bg-green-500/20 text-green-400' :
+                          'bg-red-500/20 text-red-400'
+                        }`}>
+                          {app.status.toUpperCase()}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <p className="text-sm text-gray-400 mb-1">Channel Name</p>
+                          <p className="text-sm">{app.channel_name}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-400 mb-1">Subscribers</p>
+                          <p className="text-sm">{app.subscriber_count?.toLocaleString()}</p>
+                        </div>
+                        {app.experience && (
+                          <div className="md:col-span-2">
+                            <p className="text-sm text-gray-400 mb-1">Experience</p>
+                            <p className="text-sm">{app.experience}</p>
+                          </div>
+                        )}
+                        {app.content_links && (
+                          <div className="md:col-span-2">
+                            <p className="text-sm text-gray-400 mb-1">Content Links</p>
+                            <p className="text-sm">{app.content_links}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {app.status === 'pending' && (
+                        <div className="space-y-3">
+                          <textarea
+                            value={reviewNotes}
+                            onChange={(e) => setReviewNotes(e.target.value)}
+                            placeholder="Add notes (optional)"
+                            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm resize-none"
+                            rows={2}
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleHostApplication(app.id, 'approved')}
+                              className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-sm font-medium"
+                            >
+                              ✅ Approve
+                            </button>
+                            <button
+                              onClick={() => handleHostApplication(app.id, 'rejected')}
+                              className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm font-medium"
+                            >
+                              ❌ Reject
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* Performer Applications Tab */}
+            {activeTab === 'performer_applications' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold">Performer Applications</h2>
+                  <button
+                    onClick={loadData}
+                    disabled={loading}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm font-medium disabled:opacity-50"
+                  >
+                    🔄 Fetch All
+                  </button>
+                </div>
+                {performerApplications.length === 0 ? (
+                  <p className="text-gray-400 text-center py-8">No performer applications yet</p>
+                ) : (
+                  performerApplications.map(app => (
+                    <div
+                      key={app.id}
+                      className="bg-gray-900 border border-gray-700 rounded-xl p-4"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-full bg-gray-700 overflow-hidden">
+                            {app.user?.avatar ? (
+                              <img
+                                src={app.user.avatar}
+                                alt={app.user.username}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">⭐</div>
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-semibold">{app.full_name}</p>
+                            <p className="text-sm text-gray-400">@{app.user?.username}</p>
+                          </div>
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                          app.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                          app.status === 'approved' ? 'bg-green-500/20 text-green-400' :
+                          app.status === 'bypassed' ? 'bg-purple-500/20 text-purple-400' :
+                          'bg-red-500/20 text-red-400'
+                        }`}>
+                          {app.status.toUpperCase()}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <p className="text-sm text-gray-400 mb-1">Date of Birth</p>
+                          <p className="text-sm">{app.date_of_birth ? new Date(app.date_of_birth).toLocaleDateString() : 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-400 mb-1">Email</p>
+                          <p className="text-sm">{app.email}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-400 mb-1">Talent Category</p>
+                          <p className="text-sm capitalize">{app.talent_category}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-400 mb-1">PayPal Email</p>
+                          <p className="text-sm">{app.paypal_email} {app.paypal_verified ? '✅' : '❌'}</p>
+                        </div>
+                        {app.bio && (
+                          <div className="md:col-span-2">
+                            <p className="text-sm text-gray-400 mb-1">Bio</p>
+                            <p className="text-sm">{app.bio}</p>
+                          </div>
+                        )}
+                        {app.video_url && (
+                          <div className="md:col-span-2">
+                            <p className="text-sm text-gray-400 mb-1">Video URL</p>
+                            <div className="flex gap-2 items-center">
+                              <a href={app.video_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-400 hover:underline">
+                                {app.video_url}
+                              </a>
+                              <button
+                                onClick={() => openVideoModal(app)}
+                                className="px-3 py-1 bg-purple-600 hover:bg-purple-700 rounded text-sm flex items-center gap-1"
+                              >
+                                <Play className="w-4 h-4" />
+                                Watch
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                        {app.denial_reason && (
+                          <div className="md:col-span-2">
+                            <p className="text-sm text-red-400 mb-1">Denial Reason</p>
+                            <p className="text-sm text-gray-300">{app.denial_reason}</p>
+                          </div>
+                        )}
+                        <div className="md:col-span-2 text-xs text-gray-500">
+                          Attempts: {app.attempts_count} | Submitted: {new Date(app.created_at).toLocaleString()}
+                        </div>
+                      </div>
+
+                      {app.status === 'pending' && (
+                        <div className="space-y-3">
+                          <textarea
+                            value={reviewNotes}
+                            onChange={(e) => setReviewNotes(e.target.value)}
+                            placeholder="Add denial reason (required if denying)"
+                            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm resize-none"
+                            rows={2}
+                          />
+                          <div className="flex gap-2 flex-wrap">
+                            <button
+                              onClick={() => handlePerformerApplication(app.id, 'approved')}
+                              className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-sm font-medium"
+                            >
+                              ✅ Approve
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (!reviewNotes.trim()) {
+                                  alert('Please provide a denial reason');
+                                  return;
+                                }
+                                handlePerformerApplication(app.id, 'denied');
+                              }}
+                              className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm font-medium"
+                            >
+                              ❌ Deny
+                            </button>
+                            {isCEO && (
+                              <button
+                                onClick={() => handlePerformerApplication(app.id, 'bypassed')}
+                                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm font-medium"
+                              >
+                                👑 CEO Bypass
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
             {/* Users Tab */}
             {activeTab === 'users' && (
               <div className="space-y-4">
-                <h2 className="text-xl font-semibold mb-4">Users</h2>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold">All Users</h2>
+                  <button
+                    onClick={loadData}
+                    disabled={loading}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm font-medium disabled:opacity-50"
+                  >
+                    🔄 Fetch All
+                  </button>
+                </div>
                 <div className="grid gap-4">
                   {users.map(user => (
                     <div
@@ -548,6 +1131,10 @@ export const AdminDashboardPage: React.FC = () => {
                             {user.username}
                             {user.is_ceo && <Badge type="ceo" size="sm" />}
                             {user.is_admin && <Badge type="moderator" size="sm" />}
+                            {user.is_host && <Badge type="performer" size="sm" />}
+                            {(user.badges || []).map((b: { badge_type: BadgeType }) => (
+                              <Badge key={b.badge_type} type={b.badge_type} size="sm" showLabel={false} />
+                            ))}
                           </p>
                           <p className="text-sm text-gray-400">{user.email}</p>
                         </div>
@@ -555,10 +1142,10 @@ export const AdminDashboardPage: React.FC = () => {
                       <div className="flex items-center gap-4">
                         <div className="text-right">
                           <p className="text-sm text-gray-400">Coins</p>
-                          <p className="font-medium">{user.coin_balance.toLocaleString()}</p>
+                          <p className="font-medium">{user.coin_balance?.toLocaleString() || 0}</p>
                         </div>
                         <button
-                          onClick={() => setSelectedUser(user)}
+                          onClick={() => handleManageUser(user)}
                           className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm"
                         >
                           Manage
@@ -602,7 +1189,7 @@ export const AdminDashboardPage: React.FC = () => {
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        {(['ceo', 'judge', 'auditioner', 'performer', 'winner', 'top_performer', 'moderator', 'vip'] as BadgeType[]).map(badge => (
+                        {(['ceo', 'judge', 'host', 'auditioner', 'performer', 'winner', 'top_performer', 'moderator', 'vip'] as BadgeType[]).map(badge => (
                           <button
                             key={badge}
                             onClick={() => addBadgeToUser(user.id, badge)}
@@ -1040,6 +1627,12 @@ export const AdminDashboardPage: React.FC = () => {
                   ⭐ Add Judge
                 </button>
                 <button
+                  onClick={() => addBadgeToUser(selectedUser.id, 'host')}
+                  className="px-3 py-1 bg-pink-600 hover:bg-pink-700 rounded text-sm"
+                >
+                  🎤 Add Host
+                </button>
+                <button
                   onClick={() => addBadgeToUser(selectedUser.id, 'vip')}
                   className="px-3 py-1 bg-cyan-600 hover:bg-cyan-700 rounded text-sm"
                 >
@@ -1071,6 +1664,144 @@ export const AdminDashboardPage: React.FC = () => {
         isOpen={showPayoutAllModal} 
         onClose={() => setShowPayoutAllModal(false)} 
       />
+
+      {/* Video Modal */}
+      {showVideoModal && selectedPerformer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            onClick={() => setShowVideoModal(false)}
+          />
+          <div className="relative bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setShowVideoModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            <h3 className="text-xl font-bold text-white mb-4">
+              Audition Video - {selectedPerformer.full_name}
+            </h3>
+
+            {/* Video Player */}
+            <div className="mb-6">
+              <VideoPlayer url={selectedVideoUrl} />
+            </div>
+
+            {/* Performer Info */}
+            <div className="bg-gray-800 rounded-lg p-4 mb-4">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 rounded-full bg-gray-700 overflow-hidden">
+                  {selectedPerformer.user?.avatar ? (
+                    <img
+                      src={selectedPerformer.user.avatar}
+                      alt={selectedPerformer.user.username}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">⭐</div>
+                  )}
+                </div>
+                <div>
+                  <p className="font-semibold text-white">{selectedPerformer.full_name}</p>
+                  <p className="text-sm text-gray-400">@{selectedPerformer.user?.username}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <p className="text-gray-400">Talent</p>
+                  <p className="text-white capitalize">{selectedPerformer.talent_category}</p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Bio</p>
+                  <p className="text-white">{selectedPerformer.bio || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Add to Queue Section */}
+            <div className="border-t border-gray-700 pt-4">
+              <h4 className="font-semibold text-white mb-3">Add to Show Queue</h4>
+              <div className="flex gap-2 mb-4">
+                <select
+                  value={selectedShowId}
+                  onChange={(e) => setSelectedShowId(e.target.value)}
+                  className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white"
+                >
+                  <option value="">Select a show...</option>
+                  {availableShows.map(show => (
+                    <option key={show.id} value={show.id}>{show.title}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => handleAddToQueue(selectedPerformer.id)}
+                  disabled={!selectedShowId || addingToQueue}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg text-white font-medium"
+                >
+                  {addingToQueue ? 'Adding...' : 'Add to Queue'}
+                </button>
+              </div>
+              {availableShows.length === 0 && (
+                <p className="text-sm text-yellow-400">
+                  No scheduled or live shows available. Create a show first to add performers to queue.
+                </p>
+              )}
+            </div>
+
+            {/* Approve/Deny Section */}
+            {selectedPerformer.status === 'pending' && (
+              <div className="border-t border-gray-700 pt-4 mt-4">
+                <h4 className="font-semibold text-white mb-3">Review Application</h4>
+                <textarea
+                  value={reviewNotes}
+                  onChange={(e) => setReviewNotes(e.target.value)}
+                  placeholder="Add notes (required if denying)"
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white resize-none mb-3"
+                  rows={2}
+                />
+                <div className="flex gap-2 flex-wrap">
+                  <button
+                    onClick={() => {
+                      handlePerformerApplication(selectedPerformer.id, 'approved');
+                      if (selectedShowId) {
+                        handleAddToQueue(selectedPerformer.id);
+                      }
+                    }}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-sm font-medium"
+                  >
+                    ✅ Approve
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!reviewNotes.trim()) {
+                        alert('Please provide a denial reason');
+                        return;
+                      }
+                      handlePerformerApplication(selectedPerformer.id, 'denied');
+                      setShowVideoModal(false);
+                    }}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm font-medium"
+                  >
+                    ❌ Deny
+                  </button>
+                  {isCEO && (
+                    <button
+                      onClick={() => {
+                        handlePerformerApplication(selectedPerformer.id, 'bypassed');
+                        setShowVideoModal(false);
+                      }}
+                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm font-medium"
+                    >
+                      👑 CEO Bypass
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

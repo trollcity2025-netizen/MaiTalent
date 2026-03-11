@@ -5,6 +5,37 @@ import { supabase } from '../lib/supabase'
 
 type AuthMode = 'login' | 'signup' | 'forgot-password' | 'reset-password'
 
+// IP Ban check function - checks if an IP is banned in the database
+export async function checkIPBan(ipAddress: string): Promise<{ banned: boolean; reason?: string }> {
+  try {
+    // Check if IP is banned (only active bans)
+    const { data, error } = await supabase
+      .from('banned_ips')
+      .select('*')
+      .eq('ip_address', ipAddress)
+      .eq('is_active', true)
+      .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+      console.error('Error checking IP ban:', error);
+      return { banned: false }; // Allow on error
+    }
+
+    if (data) {
+      // Check if ban has expired
+      if (data.expires_at && new Date(data.expires_at) < new Date()) {
+        return { banned: false };
+      }
+      return { banned: true, reason: data.reason };
+    }
+
+    return { banned: false };
+  } catch (err) {
+    console.error('IP ban check error:', err);
+    return { banned: false };
+  }
+}
+
 export function AuthPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -22,6 +53,13 @@ export function AuthPage() {
     const modeParam = searchParams.get('mode')
     if (modeParam === 'reset-password') {
       setMode('reset-password')
+    }
+    
+    // Check if user was banned and redirected
+    const bannedParam = searchParams.get('banned')
+    if (bannedParam === 'true') {
+      const reason = searchParams.get('reason') || 'Your IP address has been banned from this platform.'
+      setError(reason)
     }
     
     // Check for Supabase token in hash (password reset flow)
@@ -108,6 +146,26 @@ export function AuthPage() {
     setLoading(true)
 
     try {
+      // Get client IP address for ban checking
+      let clientIP = '';
+      try {
+        const ipResponse = await fetch('https://api.ipify.org?format=json');
+        const ipData = await ipResponse.json();
+        clientIP = ipData.ip;
+      } catch (ipErr) {
+        console.warn('Could not fetch client IP:', ipErr);
+      }
+
+      // Check IP ban before allowing login/signup
+      if (clientIP && (mode === 'login' || mode === 'signup')) {
+        const banCheck = await checkIPBan(clientIP);
+        if (banCheck.banned) {
+          setError(`Your IP address has been banned. Reason: ${banCheck.reason || 'No reason provided'}. Please contact support.`);
+          setLoading(false);
+          return;
+        }
+      }
+
       if (mode === 'login') {
         const { error } = await supabase.auth.signInWithPassword({
           email,
@@ -133,6 +191,16 @@ export function AuthPage() {
           navigate('/')
         }
       } else if (mode === 'signup') {
+        // Check IP ban before allowing signup
+        if (clientIP) {
+          const banCheck = await checkIPBan(clientIP);
+          if (banCheck.banned) {
+            setError(`Your IP address has been banned. Reason: ${banCheck.reason || 'No reason provided'}. Please contact support.`);
+            setLoading(false);
+            return;
+          }
+        }
+
         // Redirect to terms page for new users
         navigate('/terms', { state: { email, password } })
       } else if (mode === 'forgot-password') {

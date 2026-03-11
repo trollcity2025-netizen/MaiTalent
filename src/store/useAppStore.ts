@@ -29,6 +29,15 @@ interface AppState {
   paypalModalOpen: boolean
   setPaypalModalOpen: (open: boolean) => void
   
+  // Performer Application modal
+  performerAppOpen: boolean
+  setPerformerAppOpen: (open: boolean) => void
+  
+  // User Actions modal (for follow/block/report)
+  userActionsOpen: boolean
+  selectedUserForActions: { id: string; username: string; avatar: string; bio?: string } | null
+  setUserActionsOpen: (open: boolean, user?: { id: string; username: string; avatar: string; bio?: string } | null) => void
+  
   // Sidebar state
   sidebarCollapsed: boolean
   toggleSidebar: () => void
@@ -111,6 +120,15 @@ export const useAppStore = create<AppState>((set) => ({
   // PayPal modal
   paypalModalOpen: false,
   setPaypalModalOpen: (open) => set({ paypalModalOpen: open }),
+  
+  // Performer Application modal
+  performerAppOpen: false,
+  setPerformerAppOpen: (open) => set({ performerAppOpen: open }),
+  
+  // User Actions modal
+  userActionsOpen: false,
+  selectedUserForActions: null,
+  setUserActionsOpen: (open, user) => set({ userActionsOpen: open, selectedUserForActions: user || null }),
   
   // Sidebar state
   sidebarCollapsed: false,

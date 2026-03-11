@@ -3,6 +3,7 @@ import type { FC } from 'react'
 export type BadgeType = 
   | 'ceo' 
   | 'judge' 
+  | 'host'
   | 'auditioner' 
   | 'performer' 
   | 'winner' 
@@ -30,6 +31,13 @@ const badgeConfig: Record<BadgeType, { icon: string; label: string; color: strin
     color: '#9333EA',
     bgColor: 'rgba(147, 51, 234, 0.15)',
     glowColor: '0 0 10px rgba(147, 51, 234, 0.5)',
+  },
+  host: {
+    icon: '🎤',
+    label: 'Host',
+    color: '#EC4899',
+    bgColor: 'rgba(236, 72, 153, 0.15)',
+    glowColor: '0 0 10px rgba(236, 72, 153, 0.5)',
   },
   auditioner: {
     icon: '🎤',

@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useParams, useNavigate } from 'react-router-dom'
-import { Users, Play, Settings, Plus, Award, Video, Loader2, Check, Camera, Trash2, Key, AlertTriangle, MessageSquare, Send } from 'lucide-react'
+import { Users, Play, Settings, Plus, Award, Video, Loader2, Check, Camera, Trash2, Key, AlertTriangle, MessageSquare, Send, FileText } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAppStore } from '../store/useAppStore'
+import { useFollow, useIsFollowing } from '../hooks/useUserFollows'
+import { ClickableUsername } from '../components/ClickableUsername'
 
 interface Performance {
   id: string
@@ -25,7 +27,7 @@ export function ProfilePage() {
   const location = useLocation()
   const params = useParams()
   const navigate = useNavigate()
-  const { user: storeUser, setUser } = useAppStore()
+  const { user: storeUser, setUser, setPerformerAppOpen } = useAppStore()
   const [activeTab, setActiveTab] = useState<'performances' | 'clips' | 'achievements' | 'followers' | 'settings'>('performances')
   const [isOwnProfile, setIsOwnProfile] = useState(false)
   const [profileUser, setProfileUser] = useState<Record<string, unknown> | null>(null)
@@ -43,17 +45,27 @@ export function ProfilePage() {
   const [ticketForm, setTicketForm] = useState({ subject: '', message: '' })
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deletingAccount, setDeletingAccount] = useState(false)
-  const [resettingPassword, setResettingPassword] = useState(false)
-  const [resetPasswordEmail, setResetPasswordEmail] = useState('')
-  const [resetPasswordSent, setResetPasswordSent] = useState(false)
+  const [changingPassword, setChangingPassword] = useState(false)
+  const [passwordChangeSuccess, setPasswordChangeSuccess] = useState(false)
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  })
   const [editForm, setEditForm] = useState({
     username: '',
     bio: '',
     talent_category: '',
-    avatar: ''
+    avatar: '',
+    date_of_birth: ''
   })
   
-  // Check if this is a new user signup
+  const profileUserId = profileUser?.id as string | null
+
+  // Follow functionality
+  const [followRefreshKey, setFollowRefreshKey] = useState(0)
+  const { isFollowing } = useIsFollowing(profileUserId, followRefreshKey)
+  const { toggleFollow, loading: followLoading } = useFollow()
   const isNewUser = location.state?.isNewUser === true
 
   // Get the profile ID from URL params or use current user
@@ -70,7 +82,8 @@ export function ProfilePage() {
         username: String(profileUser.username || ''),
         bio: String(profileUser.bio || ''),
         talent_category: String(profileUser.talent_category || ''),
-        avatar: String(profileUser.avatar || '')
+        avatar: String(profileUser.avatar || ''),
+        date_of_birth: String(profileUser.date_of_birth || '')
       })
     }
   }, [profileUser, isOwnProfile, isEditing])
@@ -124,7 +137,8 @@ export function ProfilePage() {
           username: profile.username || '',
           bio: profile.bio || '',
           talent_category: profile.talent_category || '',
-          avatar: profile.avatar || ''
+          avatar: profile.avatar || '',
+          date_of_birth: profile.date_of_birth || ''
         })
 
         // Update store
@@ -259,7 +273,8 @@ export function ProfilePage() {
           username: editForm.username,
           bio: editForm.bio,
           talent_category: editForm.talent_category,
-          avatar: editForm.avatar
+          avatar: editForm.avatar,
+          date_of_birth: editForm.date_of_birth || null
         })
         .eq('id', profileUser.id)
 
@@ -271,7 +286,8 @@ export function ProfilePage() {
         username: editForm.username,
         bio: editForm.bio,
         talent_category: editForm.talent_category,
-        avatar: editForm.avatar
+        avatar: editForm.avatar,
+        date_of_birth: editForm.date_of_birth
       })
 
       // Update store
@@ -422,6 +438,33 @@ export function ProfilePage() {
               </select>
             </div>
 
+            {/* Date of Birth */}
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Date of Birth</label>
+              <input
+                type="text"
+                value={editForm.date_of_birth}
+                onChange={(e) => {
+                  let value = e.target.value.replace(/[^0-9-]/g, '')
+                  // Auto-add dashes
+                  if (value.length === 2 && !value.includes('-')) {
+                    value = value + '-'
+                  }
+                  if (value.length === 5 && value.split('-').length === 2) {
+                    value = value + '-'
+                  }
+                  // Limit to 10 characters
+                  if (value.length <= 10) {
+                    setEditForm(prev => ({ ...prev, date_of_birth: value }))
+                  }
+                }}
+                placeholder="MM-DD-YYYY"
+                maxLength={10}
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-neon-gold focus:outline-none"
+              />
+              <p className="text-gray-500 text-xs mt-1">Format: MM-DD-YYYY</p>
+            </div>
+
             {/* Bio */}
             <div>
               <label className="block text-sm text-gray-400 mb-1">Bio</label>
@@ -508,20 +551,40 @@ export function ProfilePage() {
             
             <div className="flex-1 text-center sm:text-left">
               <div className="flex items-center justify-center sm:justify-start gap-2">
-                <h1 className="text-2xl font-bold">@{String(profileUser?.username || 'User')}</h1>
+                {isOwnProfile ? (
+                  <h1 className="text-2xl font-bold">@{String(profileUser?.username || 'User')}</h1>
+                ) : (
+                  <ClickableUsername
+                    userId={profileUserId || ''}
+                    username={String(profileUser?.username || 'User')}
+                    avatar={String(profileUser?.avatar || '')}
+                    bio={String(profileUser?.bio || '')}
+                    className="text-2xl font-bold"
+                  />
+                )}
                 {Boolean(profileUser?.is_verified) && <span className="gold-badge">Verified</span>}
               </div>
               <p className="text-neon-yellow">{String(profileUser?.talent_category || 'No category')}</p>
             </div>
 
             {isOwnProfile && (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="btn-neon-gold px-4 py-2 rounded-full flex items-center gap-2"
-              >
-                <Settings className="w-4 h-4" />
-                Edit Profile
-              </button>
+              <>
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="btn-neon-gold px-4 py-2 rounded-full flex items-center gap-2"
+                >
+                  <Settings className="w-4 h-4" />
+                  Edit Profile
+                </button>
+                <button
+                  onClick={() => setPerformerAppOpen(true)}
+                  className="btn-neon-purple px-4 py-2 rounded-full flex items-center gap-2"
+                  title="Apply to become a performer"
+                >
+                  <FileText className="w-4 h-4" />
+                  Performer App
+                </button>
+              </>
             )}
           </div>
 
@@ -546,13 +609,32 @@ export function ProfilePage() {
 
           {/* Follow Button */}
           {!isOwnProfile && (
-            <div className="flex justify-center sm:justify-start gap-2 mt-4">
-              <button className="btn-neon-red px-8 py-2 rounded-full">
-                Follow
+            <div className="flex items-center justify-center sm:justify-start gap-2">
+              <button 
+                onClick={() => {
+                  if (profileUserId) {
+                    toggleFollow(profileUserId, isFollowing)
+                    setFollowRefreshKey(prev => prev + 1)
+                  }
+                }}
+                disabled={followLoading}
+                className="btn-neon-red px-8 py-2 rounded-full flex items-center gap-2"
+              >
+                {followLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : isFollowing ? (
+                  'Following'
+                ) : (
+                  'Follow'
+                )}
               </button>
-              <button className="glass px-4 py-2 rounded-full hover:bg-white/10">
+              <Link 
+                to={`/chats?user=${profileUserId}`}
+                className="glass px-4 py-2 rounded-full hover:bg-white/10 flex items-center gap-2"
+              >
+                <MessageSquare className="w-4 h-4" />
                 Message
-              </button>
+              </Link>
             </div>
           )}
         </div>
@@ -676,55 +758,103 @@ export function ProfilePage() {
       {/* Settings Tab - only for own profile */}
       {activeTab === 'settings' && isOwnProfile && (
         <div className="space-y-6">
-          {/* Reset Password */}
+          {/* Change Password */}
           <div className="glass rounded-xl p-6">
             <div className="flex items-center gap-3 mb-4">
               <Key className="w-6 h-6 text-neon-gold" />
-              <h3 className="text-xl font-bold text-white">Reset Password</h3>
+              <h3 className="text-xl font-bold text-white">Change Password</h3>
             </div>
-            {!resetPasswordSent ? (
+            {!passwordChangeSuccess ? (
               <div>
-                <p className="text-gray-400 mb-4">Enter your email to receive a password reset link.</p>
-                <div className="flex gap-3">
-                  <input
-                    type="email"
-                    value={resetPasswordEmail}
-                    onChange={(e) => setResetPasswordEmail(e.target.value)}
-                    placeholder="your@email.com"
-                    className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-neon-gold focus:outline-none"
-                  />
+                <p className="text-gray-400 mb-4">Enter your current password and choose a new password.</p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Current Password</label>
+                    <input
+                      type="password"
+                      value={passwordForm.currentPassword}
+                      onChange={(e) => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
+                      placeholder="Enter current password"
+                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-neon-gold focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">New Password</label>
+                    <input
+                      type="password"
+                      value={passwordForm.newPassword}
+                      onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                      placeholder="Enter new password"
+                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-neon-gold focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Confirm New Password</label>
+                    <input
+                      type="password"
+                      value={passwordForm.confirmPassword}
+                      onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                      placeholder="Confirm new password"
+                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-neon-gold focus:outline-none"
+                    />
+                  </div>
                   <button
                     onClick={async () => {
-                      if (!resetPasswordEmail) {
-                        alert('Please enter your email address')
+                      // Validation
+                      if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+                        alert('Please fill in all password fields')
                         return
                       }
-                      setResettingPassword(true)
+                      if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+                        alert('New passwords do not match')
+                        return
+                      }
+                      if (passwordForm.newPassword.length < 6) {
+                        alert('Password must be at least 6 characters')
+                        return
+                      }
+                      
+                      setChangingPassword(true)
                       try {
-                        const { error } = await supabase.auth.resetPasswordForEmail(resetPasswordEmail, {
-                          redirectTo: `${window.location.origin}/reset-password`
+                        // First, verify the current password by attempting to sign in
+                        const { error: signInError } = await supabase.auth.signInWithPassword({
+                          email: String(profileUser?.email),
+                          password: passwordForm.currentPassword
                         })
-                        if (error) throw error
-                        setResetPasswordSent(true)
+                        
+                        if (signInError) {
+                          alert('Current password is incorrect')
+                          return
+                        }
+                        
+                        // Password verified, now update to new password
+                        const { error: updateError } = await supabase.auth.updateUser({
+                          password: passwordForm.newPassword
+                        })
+                        
+                        if (updateError) throw updateError
+                        
+                        setPasswordChangeSuccess(true)
+                        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
                       } catch (err) {
-                        console.error('Password reset error:', err)
-                        alert('Failed to send reset email. Please try again.')
+                        console.error('Password change error:', err)
+                        alert('Failed to change password. Please try again.')
                       } finally {
-                        setResettingPassword(false)
+                        setChangingPassword(false)
                       }
                     }}
-                    disabled={resettingPassword}
-                    className="btn-neon-gold px-6 py-2 rounded-lg font-bold flex items-center gap-2"
+                    disabled={changingPassword}
+                    className="w-full py-3 bg-neon-gold hover:bg-neon-yellow text-black font-bold rounded-lg flex items-center justify-center gap-2"
                   >
-                    {resettingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                    Send Link
+                    {changingPassword ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
+                    Change Password
                   </button>
                 </div>
               </div>
             ) : (
               <div className="text-green-400 flex items-center gap-2">
                 <Check className="w-5 h-5" />
-                Password reset link sent! Check your email.
+                Password changed successfully!
               </div>
             )}
           </div>

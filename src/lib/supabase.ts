@@ -533,5 +533,113 @@ export interface ShowQueueItem {
   ready_at: string | null;
   confirmed_at: string | null;
   skipped_at: string | null;
+  performer_application_id: string | null;
   created_at: string;
+}
+
+// ============================================
+// FOLLOW SYSTEM TYPES
+// ============================================
+
+export interface UserFollow {
+  id: string;
+  follower_id: string;
+  following_id: string;
+  created_at: string;
+}
+
+// ============================================
+// BLOCKED USERS TYPES
+// ============================================
+
+export interface BlockedUser {
+  id: string;
+  blocker_id: string;
+  blocked_id: string;
+  reason: string | null;
+  created_at: string;
+}
+
+// ============================================
+// USER REPORTS TYPES
+// ============================================
+
+export type ReportType = 'spam' | 'harassment' | 'inappropriate' | 'fake_account' | 'other';
+export type ReportStatus = 'pending' | 'reviewed' | 'action_taken' | 'dismissed';
+
+export interface UserReport {
+  id: string;
+  reporter_id: string;
+  reported_id: string;
+  report_type: ReportType;
+  description: string | null;
+  status: ReportStatus;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  resolution_notes: string | null;
+  created_at: string;
+}
+
+// ============================================
+// PERFORMER APPLICATIONS TYPES
+// ============================================
+
+export type PerformerApplicationStatus = 'pending' | 'approved' | 'denied' | 'bypassed';
+
+export interface PerformerApplication {
+  id: string;
+  user_id: string;
+  full_name: string;
+  date_of_birth: string;
+  email: string;
+  phone: string | null;
+  talent_category: string;
+  bio: string | null;
+  video_url: string | null;
+  availability: string | null;
+  paypal_email: string;
+  paypal_verified: boolean;
+  status: PerformerApplicationStatus;
+  denial_reason: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  last_attempt_at: string | null;
+  attempts_count: number;
+  bypassed_by: string | null;
+  bypassed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  user?: {
+    username: string;
+    avatar: string;
+  };
+}
+
+// ============================================
+// INTERNAL NOTIFICATIONS TYPES
+// ============================================
+
+export interface AppNotification {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  message: string | null;
+  link: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+// ============================================
+// USER NOTIFICATIONS (OneSignal) TYPES
+// ============================================
+
+export interface UserNotification {
+  id: string;
+  user_id: string;
+  onesignal_player_id: string | null;
+  device_type: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }

@@ -73,7 +73,6 @@ export function HomePage() {
   
   // State for audition button
   const [joiningQueue, setJoiningQueue] = useState(false)
-  const [queueJoined, setQueueJoined] = useState(false)
   const navigate = useNavigate()
   const { user } = useAppStore()
   
@@ -126,7 +125,6 @@ export function HomePage() {
       
       if (error) throw error
       
-      setQueueJoined(true)
       alert('You have been added to the queue! Wait for your turn to perform.')
       
       // Navigate to the show
@@ -482,7 +480,7 @@ export function HomePage() {
               {/* Watch Live Button */}
               <div className="text-center">
                 <Link
-                  to="/leaderboard"
+                  to="/show/preview"
                   className="inline-block px-8 py-3 rounded-full font-bold transition-all duration-300 hover:scale-105"
                   style={{
                     backgroundColor: COLORS.red,

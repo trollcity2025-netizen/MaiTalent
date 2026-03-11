@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { 
   Users, Gift, Send, MessageCircle, AlertTriangle, Crown, Gavel,
-  Clock, SkipForward, Play, Mic, MicOff, Sparkles, Star, Video
+  Clock, SkipForward, Play, Mic, MicOff, Sparkles, Star, Video, AlertCircle as AlertIcon
 } from 'lucide-react'
 import { useAppStore } from '../store/useAppStore'
 import { supabase } from '../lib/supabase'
@@ -10,6 +10,35 @@ import { useUserRole } from '../hooks/useUserRole'
 import { useAgora } from '../hooks/useAgora'
 import { VideoControls } from '../components/VideoControls'
 import { AgoraVideo } from '../components/AgoraVideo'
+
+// IP Ban check function
+async function checkIPBan(ipAddress: string): Promise<{ banned: boolean; reason?: string }> {
+  try {
+    const { data, error } = await supabase
+      .from('banned_ips')
+      .select('*')
+      .eq('ip_address', ipAddress)
+      .eq('is_active', true)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error checking IP ban:', error);
+      return { banned: false };
+    }
+
+    if (data) {
+      if (data.expires_at && new Date(data.expires_at) < new Date()) {
+        return { banned: false };
+      }
+      return { banned: true, reason: data.reason };
+    }
+
+    return { banned: false };
+  } catch (err) {
+    console.error('IP ban check error:', err);
+    return { banned: false };
+  }
+}
 
 interface PerformerBox {
   id: string
@@ -72,8 +101,35 @@ const giftOptions: GiftOption[] = [
 
 export function LiveShowPage() {
   const { id } = useParams<{ id: string }>()
-  const { user, viewerCount, chatMessages, addChatMessage, removeChatMessage } = useAppStore()
+  const { user, viewerCount, chatMessages, addChatMessage, removeChatMessage, logout } = useAppStore()
   const { isAdmin, isCeo } = useUserRole()
+  
+  // IP Ban state
+  const [isBanned, setIsBanned] = useState(false)
+  const [banReason, setBanReason] = useState('')
+  
+  // Check IP ban on page load
+  useEffect(() => {
+    const checkBan = async () => {
+      try {
+        const ipResponse = await fetch('https://api.ipify.org?format=json')
+        const ipData = await ipResponse.json()
+        const banResult = await checkIPBan(ipData.ip)
+        
+        if (banResult.banned) {
+          setIsBanned(true)
+          setBanReason(banResult.reason || 'Your IP address has been banned from this platform.')
+          // Optionally log out the user
+          await supabase.auth.signOut()
+          logout()
+        }
+      } catch (err) {
+        console.warn('Could not check IP ban:', err)
+      }
+    }
+
+    checkBan()
+  }, [logout])
   
   // Check if we're in preview mode (no show ID)
   const isPreview = !id || id === 'preview'
@@ -837,6 +893,22 @@ export function LiveShowPage() {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
+  // Show banned message if IP is banned
+  if (isBanned) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <AlertIcon className="w-10 h-10 text-red-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-red-500 mb-4">Access Denied</h1>
+          <p className="text-gray-400 max-w-md">{banReason}</p>
+          <p className="text-gray-500 text-sm mt-4">Please contact support if you believe this is an error.</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -1924,8 +1996,8 @@ export function LiveShowPage() {
                 </button>
               )}
 
-              {/* Join Queue Button - for regular users */}
-              {!isHost && !isPublishingVideo && !isInQueue && user && curtainsOpen && (
+              {/* Join Queue Button - for regular users (allow joining even when no show is live) */}
+              {!isHost && !isPublishingVideo && !isInQueue && user && (curtainsOpen || isPreview) && (
                 <button
                   onClick={handleJoinQueue}
                   disabled={queue.length >= 52}

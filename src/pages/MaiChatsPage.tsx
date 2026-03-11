@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Search, Send, Gift, Smile, MessageCircle, Crown, Star, Mic, Clapperboard, MoreVertical, Phone, Video, UserPlus, UserMinus, Lock } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAppStore } from '../store/useAppStore'
 
@@ -46,6 +47,8 @@ const MESSAGE_COST = 500
 
 export function MaiChatsPage() {
   const { user, coins, setUser } = useAppStore()
+  const [searchParams] = useSearchParams()
+  const userParam = useMemo(() => searchParams.get('user'), [searchParams])
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -63,7 +66,7 @@ export function MaiChatsPage() {
     try {
       // Get users we're following
       const { data: followingData } = await supabase
-        .from('followers')
+        .from('user_follows')
         .select('following_id')
         .eq('follower_id', user.id)
 
@@ -92,6 +95,11 @@ export function MaiChatsPage() {
           }
         }
       })
+
+      // Check if there's a user query parameter to add as a new conversation
+      if (userParam && userParam !== user.id) {
+        userIds.add(userParam)
+      }
 
       // Get user profiles
       if (userIds.size > 0) {
@@ -132,7 +140,14 @@ export function MaiChatsPage() {
         }))
 
         setConversations(convs)
-        if (convs.length > 0 && !selectedConversation) {
+        
+        // If there's a user parameter, select that conversation
+        if (userParam && userParam !== user.id) {
+          const userConv = convs.find(c => c.userId === userParam)
+          if (userConv) {
+            setSelectedConversation(userConv)
+          }
+        } else if (convs.length > 0 && !selectedConversation) {
           setSelectedConversation(convs[0])
         }
       }
@@ -141,7 +156,7 @@ export function MaiChatsPage() {
     } finally {
       setLoading(false)
     }
-  }, [user, selectedConversation])
+  }, [user, selectedConversation, userParam])
 
   // Fetch messages for selected conversation
   const fetchMessages = useCallback(async () => {
@@ -188,7 +203,7 @@ export function MaiChatsPage() {
     if (!user) return false
     
     const { data } = await supabase
-      .from('followers')
+      .from('user_follows')
       .select('id')
       .eq('follower_id', user.id)
       .eq('following_id', otherUserId)
@@ -207,14 +222,14 @@ export function MaiChatsPage() {
       if (isFollowing) {
         // Unfollow
         await supabase
-          .from('followers')
+          .from('user_follows')
           .delete()
           .eq('follower_id', user.id)
           .eq('following_id', selectedConversation.userId)
       } else {
         // Follow
         await supabase
-          .from('followers')
+          .from('user_follows')
           .insert({
             follower_id: user.id,
             following_id: selectedConversation.userId
