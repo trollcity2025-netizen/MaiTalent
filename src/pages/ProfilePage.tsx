@@ -1,6 +1,8 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Users, Play, Settings, Plus, Award, Video } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Link, useLocation, useParams } from 'react-router-dom'
+import { Users, Play, Settings, Plus, Award, Video, Loader2, Check, Camera, Trash2 } from 'lucide-react'
+import { supabase } from '../lib/supabase'
+import { useAppStore } from '../store/useAppStore'
 
 interface Performance {
   id: string
@@ -8,6 +10,8 @@ interface Performance {
   thumbnail: string
   views: number
   date: string
+  user_id?: string
+  status?: string
 }
 
 interface Achievement {
@@ -17,32 +21,429 @@ interface Achievement {
   date: string
 }
 
-const mockProfile = {
-  id: '1',
-  username: 'DancingQueen',
-  avatar: 'https://i.pravatar.cc/300?u=1',
-  bio: 'Professional dancer with 10+ years of experience. Passionate about spreading joy through dance! 💃✨',
-  talent_category: 'Dance',
-  followers: 25000,
-  following: 150,
-  total_views: 500000,
-}
-
-const mockPerformances: Performance[] = [
-  { id: '1', title: 'Summer Dance-off 2026', thumbnail: 'https://picsum.photos/seed/perf1/320/180', views: 50000, date: '2026-03-01' },
-  { id: '2', title: 'Street Style Showcase', thumbnail: 'https://picsum.photos/seed/perf2/320/180', views: 35000, date: '2026-02-15' },
-  { id: '3', title: 'Contemporary Flow', thumbnail: 'https://picsum.photos/seed/perf3/320/180', views: 28000, date: '2026-01-20' },
-]
-
-const mockAchievements: Achievement[] = [
-  { id: '1', name: 'Top 10 Performer', icon: '🏆', date: '2026-02-01' },
-  { id: '2', name: '100K Views', icon: '👁️', date: '2026-01-15' },
-  { id: '3', name: 'Verified Artist', icon: '✅', date: '2025-12-01' },
-]
-
 export function ProfilePage() {
+  const location = useLocation()
+  const params = useParams()
+  const { user: storeUser, setUser } = useAppStore()
   const [activeTab, setActiveTab] = useState<'performances' | 'clips' | 'achievements' | 'followers'>('performances')
-  const isOwnProfile = true // Would be determined by auth state
+  const [isOwnProfile, setIsOwnProfile] = useState(false)
+  const [profileUser, setProfileUser] = useState<Record<string, unknown> | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [isEditing, setIsEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [performances, setPerformances] = useState<Performance[]>([])
+  const [deletingPerfId, setDeletingPerfId] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [editForm, setEditForm] = useState({
+    username: '',
+    bio: '',
+    talent_category: '',
+    avatar: ''
+  })
+  
+  // Check if this is a new user signup
+  const isNewUser = location.state?.isNewUser === true
+
+  // Get the profile ID from URL params or use current user
+  const profileId = params.id
+
+  useEffect(() => {
+    loadProfile()
+  }, [profileId])
+
+  // Populate edit form when profile loads and we're viewing own profile
+  useEffect(() => {
+    if (profileUser && isOwnProfile && !isEditing) {
+      setEditForm({
+        username: profileUser.username || '',
+        bio: profileUser.bio || '',
+        talent_category: profileUser.talent_category || '',
+        avatar: profileUser.avatar || ''
+      })
+    }
+  }, [profileUser, isOwnProfile, isEditing])
+
+  // Auto-open edit mode for new users
+  useEffect(() => {
+    if (isNewUser && profileUser) {
+      setIsEditing(true)
+    }
+  }, [isNewUser, profileUser])
+
+  const loadProfile = async () => {
+    try {
+      // Get current user
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      
+      if (!authUser) {
+        // Not logged in, show public profile (or redirect)
+        setLoading(false)
+        return
+      }
+
+      // Determine which profile to load: from URL param or current user
+      const targetUserId = profileId || authUser.id
+      const isViewingOwnProfile = targetUserId === authUser.id
+
+      // Get user profile from database
+      const { data: profile, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', targetUserId)
+        .single()
+
+      if (error) {
+        console.error('Error loading profile:', error)
+        setLoading(false)
+        return
+      }
+
+      setProfileUser(profile)
+      setIsOwnProfile(isViewingOwnProfile)
+      
+      // Load user's performances
+      if (targetUserId) {
+        loadPerformances(targetUserId)
+      }
+      
+      // Only populate edit form if viewing own profile
+      if (isViewingOwnProfile) {
+        setEditForm({
+          username: profile.username || '',
+          bio: profile.bio || '',
+          talent_category: profile.talent_category || '',
+          avatar: profile.avatar || ''
+        })
+
+        // Update store
+        setUser({
+          ...storeUser,
+          id: profile.id,
+          username: profile.username,
+          avatar: profile.avatar,
+          bio: profile.bio,
+          talent_category: profile.talent_category,
+          coin_balance: profile.coin_balance,
+          is_admin: profile.is_admin,
+          is_ceo: profile.is_ceo,
+          is_verified: profile.is_verified,
+          is_performer: profile.is_performer,
+          paypal_email: profile.paypal_email,
+          paypal_verified: profile.paypal_verified
+        })
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadPerformances = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('performances')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(20)
+
+      if (error) throw error
+
+      if (data) {
+        const formattedPerformances: Performance[] = data.map(p => ({
+          id: p.id,
+          title: p.title || 'Untitled Performance',
+          thumbnail: p.thumbnail || p.video_url || `https://picsum.photos/seed/${p.id}/320/180`,
+          views: p.views || 0,
+          date: p.created_at,
+          user_id: p.user_id,
+          status: p.status
+        }))
+        setPerformances(formattedPerformances)
+      }
+    } catch (error) {
+      console.error('Error loading performances:', error)
+    }
+  }
+
+  const handleDeletePerformance = async (performanceId: string) => {
+    if (!confirm('Are you sure you want to permanently delete this performance? This cannot be undone.')) {
+      return
+    }
+
+    setDeletingPerfId(performanceId)
+    try {
+      // Hard delete - permanently remove from database
+      const { error } = await supabase
+        .from('performances')
+        .delete()
+        .eq('id', performanceId)
+
+      if (error) throw error
+
+      // Also delete from storage if there's a video/thumbnail
+      // This would require the storage path, which we'd need to track
+
+      // Update local state
+      setPerformances(prev => prev.filter(p => p.id !== performanceId))
+    } catch (error) {
+      console.error('Error deleting performance:', error)
+      alert('Failed to delete performance. Please try again.')
+    } finally {
+      setDeletingPerfId(null)
+    }
+  }
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploading(true)
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${Date.now()}.${fileExt}`
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) throw new Error('Not authenticated')
+
+      const filePath = `${user.id}/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true })
+
+      if (uploadError) throw uploadError
+
+      // Get the public URL directly
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath)
+
+      // Add a cache busting query parameter to ensure the new image is loaded
+      const cachedUrl = `${publicUrl}?t=${Date.now()}`
+
+      setEditForm(prev => ({ ...prev, avatar: cachedUrl }))
+    } catch (error) {
+      console.error('Error uploading avatar:', error)
+      alert('Failed to upload avatar. Please try again.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleSaveProfile = async () => {
+    if (!profileUser) return
+    
+    setSaving(true)
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({
+          username: editForm.username,
+          bio: editForm.bio,
+          talent_category: editForm.talent_category,
+          avatar: editForm.avatar
+        })
+        .eq('id', profileUser.id)
+
+      if (error) throw error
+
+      // Update local state
+      setProfileUser({
+        ...profileUser,
+        username: editForm.username,
+        bio: editForm.bio,
+        talent_category: editForm.talent_category,
+        avatar: editForm.avatar
+      })
+
+      // Update store
+      setUser({
+        ...storeUser,
+        username: editForm.username,
+        avatar: editForm.avatar,
+        bio: editForm.bio,
+        talent_category: editForm.talent_category
+      })
+
+      setIsEditing(false)
+    } catch (error) {
+      console.error('Error saving profile:', error)
+      alert('Failed to save profile. Please try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-neon-gold" />
+      </div>
+    )
+  }
+
+  // Profile edit mode
+  if (isEditing && isOwnProfile) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <div className="glass rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-neon-gold">
+              {isNewUser ? 'Complete Your Profile' : 'Edit Profile'}
+            </h2>
+            {!isNewUser && (
+              <button
+                onClick={() => setIsEditing(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {isNewUser && (
+            <div className="mb-6 p-4 bg-neon-gold/20 border border-neon-gold/50 rounded-lg">
+              <p className="text-neon-gold font-bold">Welcome to Mai Talent! 🎉</p>
+              <p className="text-gray-300 text-sm mt-1">
+                Please complete your profile to get started. Choose a username and tell us about your talent!
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            {/* Avatar Upload */}
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="w-24 h-24 rounded-full border-4 border-neon-gold overflow-hidden bg-gray-700">
+                  {editForm.avatar ? (
+                    <img 
+                      src={editForm.avatar} 
+                      alt="Avatar" 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+                      <Users className="w-10 h-10 text-gray-500" />
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="absolute bottom-0 right-0 w-8 h-8 bg-neon-gold rounded-full flex items-center justify-center text-black hover:bg-neon-yellow transition-colors"
+                >
+                  {uploading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Camera className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+              <div>
+                <p className="text-sm text-gray-400">Profile Photo</p>
+                <p className="text-xs text-gray-500">Tap camera to take photo</p>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleAvatarUpload}
+                className="hidden"
+              />
+            </div>
+
+            {/* Username */}
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Username *</label>
+              <input
+                type="text"
+                value={editForm.username}
+                onChange={(e) => setEditForm(prev => ({ ...prev, username: e.target.value }))}
+                placeholder="Your unique username"
+                required
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-neon-gold focus:outline-none"
+                autoComplete="off"
+              />
+            </div>
+
+            {/* Talent Category */}
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Talent Category</label>
+              <select
+                value={editForm.talent_category}
+                onChange={(e) => setEditForm(prev => ({ ...prev, talent_category: e.target.value }))}
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-neon-gold focus:outline-none"
+              >
+                <option value="">Select a category</option>
+                <option value="Singing">Singing</option>
+                <option value="Dancing">Dancing</option>
+                <option value="Comedy">Comedy</option>
+                <option value="Magic">Magic</option>
+                <option value="Variety">Variety Act</option>
+                <option value="Instrumental">Instrumental</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            {/* Bio */}
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Bio</label>
+              <textarea
+                value={editForm.bio}
+                onChange={(e) => setEditForm(prev => ({ ...prev, bio: e.target.value }))}
+                placeholder="Tell us about yourself and your talent..."
+                rows={4}
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white resize-none focus:border-neon-gold focus:outline-none"
+              />
+            </div>
+
+            {/* Save Button */}
+            <button
+              onClick={handleSaveProfile}
+              disabled={saving || !editForm.username}
+              className="w-full py-3 bg-gradient-to-r from-candy-red to-neon-gold text-white font-bold rounded-lg hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Check className="w-5 h-5" />
+                  {isNewUser ? 'Get Started' : 'Save Changes'}
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // If no profile data, show placeholder
+  if (!profileUser) {
+    return (
+      <div className="text-center py-12">
+        <Users className="w-16 h-16 mx-auto text-gray-600 mb-4" />
+        <p className="text-gray-400">Sign in to view your profile</p>
+        <Link to="/auth" className="text-neon-gold hover:underline mt-2 inline-block">
+          Sign In
+        </Link>
+      </div>
+    )
+  }
+
+  const achievements: Achievement[] = [
+    { id: '1', name: 'Top 10 Performer', icon: '🏆', date: '2026-02-01' },
+    { id: '2', name: '100K Views', icon: '👁️', date: '2026-01-15' },
+    { id: '3', name: 'Verified Artist', icon: '✅', date: '2025-12-01' },
+  ]
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -56,45 +457,58 @@ export function ProfilePage() {
         {/* Profile Info */}
         <div className="px-6 pb-6">
           <div className="flex flex-col sm:flex-row items-center sm:items-end gap-4 -mt-12 relative z-10">
-            <div className="w-24 h-24 rounded-full border-4 border-black overflow-hidden neon-glow-gold">
-              <img src={mockProfile.avatar} alt={mockProfile.username} className="w-full h-full object-cover" />
+            <div className="w-24 h-24 rounded-full border-4 border-black overflow-hidden neon-glow-gold bg-gray-700">
+              {profileUser?.avatar ? (
+                <img 
+                  src={String(profileUser.avatar)} 
+                  alt={String(profileUser.username || 'User')} 
+                  className="w-full h-full object-cover" 
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/vite.svg'
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+                  <Users className="w-10 h-10 text-gray-500" />
+                </div>
+              )}
             </div>
             
             <div className="flex-1 text-center sm:text-left">
               <div className="flex items-center justify-center sm:justify-start gap-2">
-                <h1 className="text-2xl font-bold">@{mockProfile.username}</h1>
-                <span className="gold-badge">Verified</span>
+                <h1 className="text-2xl font-bold">@{String(profileUser?.username || 'User')}</h1>
+                {Boolean(profileUser?.is_verified) && <span className="gold-badge">Verified</span>}
               </div>
-              <p className="text-neon-yellow">{mockProfile.talent_category}</p>
+              <p className="text-neon-yellow">{String(profileUser?.talent_category || 'No category')}</p>
             </div>
 
             {isOwnProfile && (
-              <Link
-                to="/settings"
+              <button
+                onClick={() => setIsEditing(true)}
                 className="btn-neon-gold px-4 py-2 rounded-full flex items-center gap-2"
               >
                 <Settings className="w-4 h-4" />
                 Edit Profile
-              </Link>
+              </button>
             )}
           </div>
 
           {/* Bio */}
-          <p className="mt-4 text-gray-300 text-center sm:text-left">{mockProfile.bio}</p>
+          <p className="mt-4 text-gray-300 text-center sm:text-left">{String(profileUser?.bio || 'No bio yet')}</p>
 
           {/* Stats */}
           <div className="flex justify-center sm:justify-start gap-8 mt-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-neon-yellow">{mockProfile.followers.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-neon-yellow">{Number(profileUser?.followers || 0).toLocaleString()}</p>
               <p className="text-sm text-gray-400">Followers</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-white">{mockProfile.following.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-white">{Number(profileUser?.following || 0).toLocaleString()}</p>
               <p className="text-sm text-gray-400">Following</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-candy-red">{mockProfile.total_views.toLocaleString()}</p>
-              <p className="text-sm text-gray-400">Total Views</p>
+              <p className="text-2xl font-bold text-candy-red">{Number(profileUser?.total_earnings || 0).toLocaleString()}</p>
+              <p className="text-sm text-gray-400">Total Earnings</p>
             </div>
           </div>
 
@@ -138,31 +552,54 @@ export function ProfilePage() {
       {/* Tab Content */}
       {activeTab === 'performances' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {mockPerformances.map((performance) => (
-            <Link
-              key={performance.id}
-              to={`/performance/${performance.id}`}
-              className="glass rounded-xl overflow-hidden card-neon-hover"
-            >
-              <div className="relative aspect-video">
-                <img
-                  src={performance.thumbnail}
-                  alt={performance.title}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                  <Play className="w-12 h-12 text-neon-yellow" fill="currentColor" />
-                </div>
+          {performances.length > 0 ? (
+            performances.map((performance) => (
+              <div key={performance.id} className="glass rounded-xl overflow-hidden card-neon-hover relative group">
+                <Link to={`/performance/${performance.id}`}>
+                  <div className="relative aspect-video">
+                    <img
+                      src={performance.thumbnail}
+                      alt={performance.title}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                      <Play className="w-12 h-12 text-neon-yellow" fill="currentColor" />
+                    </div>
+                  </div>
+                  <div className="p-3">
+                    <h3 className="font-bold text-white truncate">{performance.title}</h3>
+                    <div className="flex items-center justify-between mt-2 text-sm text-gray-400">
+                      <span>{performance.views.toLocaleString()} views</span>
+                      <span>{new Date(performance.date).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                </Link>
+                {/* Delete button - only for own profile */}
+                {isOwnProfile && (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault()
+                      handleDeletePerformance(performance.id)
+                    }}
+                    disabled={deletingPerfId === performance.id}
+                    className="absolute top-2 right-2 p-2 bg-red-600/80 hover:bg-red-600 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Delete performance"
+                  >
+                    {deletingPerfId === performance.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    ) : (
+                      <Trash2 className="w-4 h-4 text-white" />
+                    )}
+                  </button>
+                )}
               </div>
-              <div className="p-3">
-                <h3 className="font-bold text-white truncate">{performance.title}</h3>
-                <div className="flex items-center justify-between mt-2 text-sm text-gray-400">
-                  <span>{performance.views.toLocaleString()} views</span>
-                  <span>{new Date(performance.date).toLocaleDateString()}</span>
-                </div>
-              </div>
-            </Link>
-          ))}
+            ))
+          ) : (
+            <div className="col-span-full text-center py-8 text-gray-400">
+              <Video className="w-12 h-12 mx-auto mb-2 opacity-50" />
+              <p>No performances yet</p>
+            </div>
+          )}
           
           {/* Add More */}
           <Link
@@ -184,7 +621,7 @@ export function ProfilePage() {
 
       {activeTab === 'achievements' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {mockAchievements.map((achievement) => (
+          {achievements.map((achievement) => (
             <div key={achievement.id} className="glass rounded-xl p-4 flex items-center gap-4">
               <span className="text-4xl">{achievement.icon}</span>
               <div>

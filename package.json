@@ -7,7 +7,15 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy:edge-function": "supabase functions deploy youtube-broadcast --project-ref tknepjvwalphimbglnab",
+    "deploy:edge-function:prod": "supabase functions deploy youtube-broadcast --project-ref YOUR_PROD_PROJECT_REF",
+    "deploy:all": "npm run deploy:youtube && npm run deploy:paypal-checkout && npm run deploy:paypal-payout && npm run deploy:video-compressor",
+    "deploy:youtube": "supabase functions deploy youtube-broadcast --project-ref tknepjvwalphimbglnab",
+    "deploy:paypal-checkout": "supabase functions deploy paypal-checkout --project-ref tknepjvwalphimbglnab",
+    "deploy:paypal-payout": "supabase functions deploy paypal-payout --project-ref tknepjvwalphimbglnab",
+    "deploy:video-compressor": "supabase functions deploy video-compressor --project-ref tknepjvwalphimbglnab",
+    "setup:youtube": "echo 'To set up YouTube API:\n1. Go to Google Cloud Console\n2. Enable YouTube Data API v3\n3. Create OAuth credentials\n4. Get refresh token\n5. Add to Supabase Edge Function env vars'"
   },
   "dependencies": {
     "@mux/mux-player-react": "^3.11.5",

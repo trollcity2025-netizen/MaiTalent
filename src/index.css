@@ -1,4 +1,4 @@
-@import "tailwindcss";
+ @import "tailwindcss";
 
 @theme {
   --color-candy-red: #ff1a1a;
@@ -209,6 +209,26 @@ body {
     0 0 10px #ffd700,
     0 0 20px #ffd700,
     0 0 30px #ffd700;
+  transform: translateY(-2px);
+}
+
+/* Button styles - PURPLE (Judge) */
+.btn-neon-purple {
+  background: linear-gradient(135deg, #9333ea 0%, #7c3aed 100%);
+  color: white;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-neon-purple:hover {
+  box-shadow: 
+    0 0 10px #9333ea,
+    0 0 20px #9333ea,
+    0 0 30px #9333ea;
   transform: translateY(-2px);
 }
 
@@ -443,4 +463,672 @@ body {
   font-weight: bold;
   text-transform: uppercase;
   border-radius: 2px;
+}
+
+/* Competition Page Styles */
+.competition-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.competition-page.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+.loading-spinner {
+  color: white;
+  font-size: 1.2rem;
+}
+
+.page-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.page-header h1 {
+  font-size: 2.5rem;
+  color: #ffd700;
+  margin: 0;
+  text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+}
+
+.page-header p {
+  color: #bdc3c7;
+  font-size: 1.1rem;
+  margin: 10px 0 0 0;
+}
+
+.season-selector {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 30px;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+}
+
+.season-selector label {
+  color: white;
+  font-weight: 600;
+}
+
+.season-selector select {
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: 1px solid #2c3e50;
+  background: #1a1a2e;
+  color: white;
+  font-size: 1rem;
+}
+
+.season-info-card {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border-radius: 20px;
+  padding: 30px;
+  margin-bottom: 30px;
+  border: 2px solid #2c3e50;
+}
+
+.season-badge {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.season-name {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #ffd700;
+}
+
+.season-status {
+  padding: 5px 15px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: bold;
+}
+
+.season-status.active {
+  background: #2ecc71;
+  color: white;
+}
+
+.season-status.completed {
+  background: #7f8c8d;
+  color: white;
+}
+
+.season-status.upcoming {
+  background: #3498db;
+  color: white;
+}
+
+.season-dates {
+  color: #bdc3c7;
+  font-size: 1rem;
+}
+
+.season-cta {
+  margin-top: 20px;
+}
+
+.apply-btn {
+  padding: 15px 40px;
+  border: none;
+  border-radius: 30px;
+  background: linear-gradient(135deg, #ffd700, #f39c12);
+  color: #1a1a2e;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.apply-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 20px rgba(255, 215, 0, 0.4);
+}
+
+.rounds-section, .auditions-section {
+  margin-bottom: 40px;
+}
+
+.rounds-section h2, .auditions-section h2 {
+  color: white;
+  font-size: 1.5rem;
+  margin-bottom: 20px;
+}
+
+.no-rounds {
+  text-align: center;
+  padding: 40px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+}
+
+.no-rounds p {
+  color: #bdc3c7;
+}
+
+.rounds-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.round-card {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border-radius: 16px;
+  padding: 20px;
+  border: 2px solid #2c3e50;
+  transition: all 0.2s ease;
+}
+
+.round-card:hover {
+  transform: translateY(-3px);
+  border-color: #3498db;
+}
+
+.round-card.active {
+  border-color: #2ecc71;
+}
+
+.round-card.completed {
+  border-color: #7f8c8d;
+  opacity: 0.8;
+}
+
+.round-number {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #3498db;
+  margin-bottom: 10px;
+}
+
+.round-name {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: white;
+  margin-bottom: 10px;
+}
+
+.round-description {
+  font-size: 0.9rem;
+  color: #bdc3c7;
+  margin-bottom: 15px;
+}
+
+.round-status {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.round-status.scheduled {
+  background: #3498db;
+  color: white;
+}
+
+.round-status.active {
+  background: #2ecc71;
+  color: white;
+}
+
+.round-status.completed {
+  background: #7f8c8d;
+  color: white;
+}
+
+.auditions-list {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.audition-row {
+  display: flex;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 1px solid #2c3e50;
+  transition: background 0.2s;
+}
+
+.audition-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.audition-row:last-child {
+  border-bottom: none;
+}
+
+.audition-rank {
+  width: 40px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #f39c12;
+}
+
+.audition-rank.top-3 {
+  color: #ffd700;
+}
+
+.audition-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 15px;
+}
+
+.audition-info {
+  flex: 1;
+}
+
+.audition-username {
+  font-weight: bold;
+  color: white;
+}
+
+.audition-category {
+  font-size: 0.85rem;
+  color: #bdc3c7;
+}
+
+.audition-score {
+  text-align: right;
+}
+
+.audition-final-score {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #2ecc71;
+}
+
+.audition-votes {
+  font-size: 0.85rem;
+  color: #bdc3c7;
+}
+
+.no-season {
+  text-align: center;
+  padding: 60px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 20px;
+}
+
+.no-season h2 {
+  color: white;
+  margin-bottom: 10px;
+}
+
+.no-season p {
+  color: #bdc3c7;
+}
+
+@media (max-width: 768px) {
+  .page-header h1 {
+    font-size: 1.8rem;
+  }
+
+  .rounds-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Fire glow effect for trending performers */
+@keyframes fire-pulse {
+  0%, 100% {
+    box-shadow: 
+      0 0 5px #ff4500,
+      0 0 10px #ff4500,
+      0 0 20px #ff6600,
+      0 0 40px #ff4500;
+  }
+  50% {
+    box-shadow: 
+      0 0 10px #ff6600,
+      0 0 20px #ff6600,
+      0 0 30px #ff8c00,
+      0 0 50px #ff6600;
+  }
+}
+
+.fire-glow {
+  animation: fire-pulse 1.5s ease-in-out infinite;
+}
+
+.fire-border {
+  box-shadow: 
+    0 0 5px #ff4500,
+    0 0 10px #ff6600,
+    inset 0 0 10px rgba(255, 100, 0, 0.3);
+}
+
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.pulse-slow {
+  animation: pulse-slow 2s ease-in-out infinite;
+}
+
+/* Musical notes animation for sidebar */
+@keyframes musical-note-float {
+  0% {
+    opacity: 0;
+    transform: translateY(0) rotate(0deg) scale(0.5);
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-30px) rotate(20deg) scale(1);
+  }
+}
+
+.musical-note {
+  position: absolute;
+  pointer-events: none;
+  font-size: 16px;
+  animation: musical-note-float 1s ease-out forwards;
+}
+
+.musical-note:nth-child(1) {
+  left: 20%;
+  animation-delay: 0s;
+}
+
+.musical-note:nth-child(2) {
+  left: 40%;
+  animation-delay: 0.15s;
+}
+
+.musical-note:nth-child(3) {
+  left: 60%;
+  animation-delay: 0.3s;
+}
+
+.musical-note:nth-child(4) {
+  left: 80%;
+  animation-delay: 0.45s;
+}
+
+/* Sidebar nav item with musical notes */
+.sidebar-nav-item {
+  position: relative;
+  overflow: visible;
+}
+
+.sidebar-nav-item:hover .musical-notes-container,
+.sidebar-nav-item.active .musical-notes-container {
+  opacity: 1;
+}
+
+.musical-notes-container {
+  position: absolute;
+  right: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 30px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  overflow-x: hidden;
+}
+
+/* Text shadow utility */
+.text-shadow-lg {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5), 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.text-shadow-glow {
+  text-shadow: 0 0 10px currentColor;
+}
+
+/* ==================== STAGE EFFECTS ==================== */
+
+/* Stage screen glow effect */
+.stage-screen {
+  transition: all 0.3s ease;
+}
+
+.stage-screen.active {
+  animation: screen-pulse 2s ease-in-out infinite;
+}
+
+@keyframes screen-pulse {
+  0%, 100% {
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 50px rgba(255, 215, 0, 0.5);
+  }
+}
+
+/* Spotlight beam animation */
+.spotlight-beam {
+  animation: spotlight-sway 8s ease-in-out infinite;
+  opacity: 0.8;
+}
+
+@keyframes spotlight-sway {
+  0%, 100% {
+    transform: translateX(0) scaleX(1);
+    opacity: 0.8;
+  }
+  25% {
+    transform: translateX(5px) scaleX(1.1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: translateX(0) scaleX(1);
+    opacity: 0.8;
+  }
+  75% {
+    transform: translateX(-5px) scaleX(1.1);
+    opacity: 0.9;
+  }
+}
+
+.animation-delay-500 {
+  animation-delay: 0.5s;
+}
+
+.animation-delay-1000 {
+  animation-delay: 1s;
+}
+
+.animation-delay-1500 {
+  animation-delay: 1.5s;
+}
+
+/* Floating particles / stage dust */
+.particle-float {
+  animation: particle-float var(--duration, 10s) ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+
+@keyframes particle-float {
+  0%, 100% {
+    transform: translateY(0) translateX(0);
+    opacity: 0.3;
+  }
+  25% {
+    transform: translateY(-20px) translateX(10px);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translateY(-40px) translateX(-5px);
+    opacity: 0.3;
+  }
+  75% {
+    transform: translateY(-60px) translateX(15px);
+    opacity: 0.5;
+  }
+}
+
+/* Beam overlay animation */
+.beam-overlay {
+  background: 
+    radial-gradient(ellipse at 30% 20%, rgba(255, 215, 0, 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 20%, rgba(255, 26, 26, 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 0%, rgba(255, 140, 0, 0.05) 0%, transparent 40%);
+  animation: beam-pulse 4s ease-in-out infinite;
+}
+
+@keyframes beam-pulse {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Judge card animation */
+.judge-card {
+  transition: all 0.3s ease;
+}
+
+.judge-card.joined {
+  animation: judge-glow 3s ease-in-out infinite;
+}
+
+@keyframes judge-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(147, 51, 234, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 35px rgba(147, 51, 234, 0.5);
+  }
+}
+
+/* Traveling gift animation */
+.animate-travel-gift {
+  animation: travel-gift 2s ease-in-out forwards;
+}
+
+@keyframes travel-gift {
+  0% {
+    left: 0%;
+    transform: translateY(-50%) scale(1);
+    opacity: 1;
+  }
+  50% {
+    left: 50%;
+    transform: translateY(-50%) scale(1.5);
+    opacity: 1;
+  }
+  100% {
+    left: 100%;
+    transform: translateY(-50%) scale(1);
+    opacity: 0;
+  }
+}
+
+/* Curtain animation */
+.curtain-left, .curtain-right {
+  transition: all 1s ease-in-out;
+}
+
+.curtain-opening {
+  animation: curtain-open 1s ease-in-out forwards;
+}
+
+.curtain-closing {
+  animation: curtain-close 1s ease-in-out forwards;
+}
+
+@keyframes curtain-open {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes curtain-close {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* Realistic Velvet Curtain Sway Animation */
+@keyframes curtain-sway {
+  0%, 100% {
+    transform: skewX(var(--sway-direction, 0deg)) translateX(0);
+  }
+  25% {
+    transform: skewX(calc(var(--sway-direction, 0deg) + 2deg)) translateX(3px);
+  }
+  50% {
+    transform: skewX(var(--sway-direction, 0deg)) translateX(0);
+  }
+  75% {
+    transform: skewX(calc(var(--sway-direction, 0deg) - 2deg)) translateX(-3px);
+  }
+}
+
+.animate-curtain-sway {
+  animation: curtain-sway 6s ease-in-out infinite;
+  transform-origin: top center;
+}
+
+/* Velvet fabric shimmer */
+@keyframes velvet-shimmer {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.velvet-shimmer {
+  animation: velvet-shimmer 4s ease-in-out infinite;
+}
+
+/* Stage depth blur effect behind curtains */
+.stage-depth-blur {
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+/* Confetti animation for winner display */
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-100vh) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+.animate-confetti {
+  animation: confetti-fall linear forwards;
 }

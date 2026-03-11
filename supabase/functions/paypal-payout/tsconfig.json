@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "allowUnreachableCode": true,
+    "allowUnusedLabels": true,
+    "checkJs": false,
+    "lib": ["deno.window"],
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": false,
+    "strict": false,
+    "target": "esnext",
+    "types": ["deno-types"]
+  },
+  "include": ["**/*"],
+  "exclude": []
+}
