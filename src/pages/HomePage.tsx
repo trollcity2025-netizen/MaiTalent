@@ -215,13 +215,13 @@ export function HomePage() {
               className="btn-neon-red px-8 py-4 rounded-full text-lg flex items-center gap-2 neon-glow-red"
             >
               <Play className="w-6 h-6" fill="white" />
-              Watch Live Now
+              Auditions
             </Link>
             <Link
-              to="/audition"
-              className="btn-neon-gold px-8 py-4 rounded-full text-lg neon-glow-gold"
+              to="/calendar"
+              className="btn-neon-purple px-8 py-4 rounded-full text-lg"
             >
-              Submit Audition
+              Upcoming Shows
             </Link>
           </div>
         </div>

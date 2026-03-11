@@ -206,6 +206,9 @@ export function LiveShowPage() {
   const [isVideoOff, setIsVideoOff] = useState(false)
   const [currentUserRole, setCurrentUserRole] = useState<'host' | 'judge' | 'performer' | 'ceo' | null>(null)
   
+  // Queue state - track if user is in queue
+  const [isInQueue, setIsInQueue] = useState(false)
+  
   // Agora channel name
   const agoraChannelName = id ? `show-${id}` : 'show-preview'
   
@@ -378,6 +381,59 @@ export function LiveShowPage() {
     setCurrentUserRole(null)
     setIsMuted(false)
     setIsVideoOff(false)
+  }
+
+  // Handle joining the queue (for regular users to perform)
+  const handleJoinQueue = async () => {
+    if (!user) {
+      alert('Please log in first!')
+      return
+    }
+    
+    // Check queue limit (max 52)
+    if (queue.length >= 52) {
+      alert('Queue is full! Maximum 52 performers allowed.')
+      return
+    }
+    
+    try {
+      // Add user to queue in database
+      const { error } = await supabase
+        .from('show_queue')
+        .insert({
+          show_id: id,
+          user_id: user.id,
+          position: queue.length + 1,
+          status: 'waiting'
+        })
+      
+      if (error) throw error
+      
+      setIsInQueue(true)
+      alert('You have joined the queue! Wait for your turn to perform.')
+    } catch (err) {
+      console.error('Error joining queue:', err)
+      alert('Failed to join queue. Please try again.')
+    }
+  }
+
+  // Handle leaving the queue
+  const handleLeaveQueue = async () => {
+    if (!user) return
+    
+    try {
+      const { error } = await supabase
+        .from('show_queue')
+        .delete()
+        .eq('show_id', id)
+        .eq('user_id', user.id)
+      
+      if (error) throw error
+      
+      setIsInQueue(false)
+    } catch (err) {
+      console.error('Error leaving queue:', err)
+    }
   }
 
   // Handle toggle mute
@@ -1846,6 +1902,28 @@ export function LiveShowPage() {
                 >
                   <Video className="w-4 h-4" />
                   Go Live
+                </button>
+              )}
+
+              {/* Join Queue Button - for regular users */}
+              {!isHost && !isPublishingVideo && !isInQueue && user && curtainsOpen && (
+                <button
+                  onClick={handleJoinQueue}
+                  disabled={queue.length >= 52}
+                  className="btn-neon-gold px-4 py-2.5 rounded-full flex items-center gap-2 text-sm disabled:opacity-50"
+                >
+                  <Users className="w-4 h-4" />
+                  Join Queue ({queue.length}/52)
+                </button>
+              )}
+
+              {/* Leave Queue Button */}
+              {!isHost && !isPublishingVideo && isInQueue && (
+                <button
+                  onClick={handleLeaveQueue}
+                  className="btn-neon-purple px-4 py-2.5 rounded-full flex items-center gap-2 text-sm"
+                >
+                  Leave Queue
                 </button>
               )}
 
