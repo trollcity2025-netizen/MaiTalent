@@ -50,6 +50,7 @@ interface PerformerBox {
   gifts: number
   judgeVotes: number // YES votes from judges
   viewerCount?: number
+  isPublishing?: boolean // Track if performer is publishing their track
 }
 
 interface JudgeBox {
@@ -61,6 +62,7 @@ interface JudgeBox {
   isJoined: boolean
   role?: string
   vote?: 'yes' | 'no' | null // Judge's vote for current performer
+  votedForPerformer?: number // Track which performer the judge voted for
 }
 
 interface QueueItem {
@@ -131,9 +133,6 @@ export function LiveShowPage() {
     checkBan()
   }, [logout])
   
-  // Check if we're in preview mode (no show ID)
-  const isPreview = !id || id === 'preview'
-
   // Floating particles for stage effect
   const [particles, setParticles] = useState<FloatingParticle[]>([])
   
@@ -180,26 +179,30 @@ export function LiveShowPage() {
   // Track if CEO is currently publishing video
   const [isCeoPublishing, setIsCeoPublishing] = useState(false)
   
+  // Track if host is currently publishing (controlled by checkbox)
+  const [hostPublishEnabled, setHostPublishEnabled] = useState(false)
+  
+  // Track performer publishing state (for each performer box)
+  const [performerPublishEnabled, setPerformerPublishEnabled] = useState<[boolean, boolean]>([false, false])
+  
   // Winner state
   const [winner, setWinner] = useState<'performer1' | 'performer2' | 'draw' | null>(null)
   const [showWinner, setShowWinner] = useState(false)
   
   const [performerBoxes, setPerformerBoxes] = useState<PerformerBox[]>(() => {
-    // Always use preview-style performers for both preview and actual show
+    // Empty performer boxes - will be populated when host starts show
     return [
-      { id: 'perf-1', userId: 'preview-1', username: 'StarVoice2026', avatar: 'https://i.pravatar.cc/150?u=starvoice', isPerforming: true, score: 2450, gifts: 850, judgeVotes: 0, viewerCount: 12450 },
-      { id: 'perf-2', userId: 'preview-2', username: 'DanceQueen', avatar: 'https://i.pravatar.cc/150?u=dancequeen', isPerforming: true, score: 1890, gifts: 620, judgeVotes: 0, viewerCount: 8320 },
+      { id: 'perf-1', userId: '', username: '', avatar: '', isPerforming: false, score: 0, gifts: 0, judgeVotes: 0, viewerCount: 0, isPublishing: false },
+      { id: 'perf-2', userId: '', username: '', avatar: '', isPerforming: false, score: 0, gifts: 0, judgeVotes: 0, viewerCount: 0, isPublishing: false },
     ]
   })
   
-  const [queue, setQueue] = useState<QueueItem[]>(() => {
-    // Always use preview-style queue for both preview and actual show
-    return [
-      { id: 'q1', userId: 'user1', username: 'SingingStar', avatar: 'https://i.pravatar.cc/50?u=user1', position: 1, status: 'waiting', isConnected: true },
-      { id: 'q2', userId: 'user2', username: 'MagicMike', avatar: 'https://i.pravatar.cc/50?u=user2', position: 2, status: 'waiting', isConnected: true },
-      { id: 'q3', userId: 'user3', username: 'ComedyKing', avatar: 'https://i.pravatar.cc/50?u=user3', position: 3, status: 'waiting', isConnected: false },
-    ]
-  })
+  // Get the performers to display (always use performerBoxes - no preview mode)
+  const displayPerformers = performerBoxes
+  
+  // Queue state - starts empty, loaded from database
+  const [queue, setQueue] = useState<QueueItem[]>([])
+  
   // Show state: 'pre-show' | 'live' | 'post-show'
   const [showState, setShowState] = useState<'pre-show' | 'live' | 'post-show'>('pre-show')
   
@@ -320,13 +323,116 @@ export function LiveShowPage() {
     }
   }
 
+  // Handle host publishing toggle (checkbox)
+  const handleHostPublishToggle = async (checked: boolean) => {
+    if (checked && user) {
+      setCurrentUserRole('host')
+      setHostPublishEnabled(true)
+      setIsPublishingVideo(true)
+      await agora.join()
+    } else {
+      await agora.leave()
+      setHostPublishEnabled(false)
+      setIsPublishingVideo(false)
+      setCurrentUserRole(null)
+      setIsMuted(false)
+      setIsVideoOff(false)
+    }
+  }
+
+  // Handle performer publishing toggle (for each performer box)
+  const handlePerformerPublishToggle = async (performerIndex: 0 | 1, checked: boolean) => {
+    if (checked && user && performerBoxes[performerIndex].userId === user.id) {
+      setCurrentUserRole('performer')
+      setPerformerPublishEnabled(prev => {
+        const newState = [...prev] as [boolean, boolean]
+        newState[performerIndex] = true
+        return newState
+      })
+      setIsPublishingVideo(true)
+      await agora.join()
+    } else if (!checked) {
+      await agora.leave()
+      setPerformerPublishEnabled(prev => {
+        const newState = [...prev] as [boolean, boolean]
+        newState[performerIndex] = false
+        return newState
+      })
+      setIsPublishingVideo(false)
+      setCurrentUserRole(null)
+      setIsMuted(false)
+      setIsVideoOff(false)
+    }
+  }
+
   // Handle curtains toggle
   const handleToggleCurtains = () => {
     setCurtainsOpen(!curtainsOpen)
   }
 
-  // Start the show - transitions from pre-show to live
-  const startShow = () => {
+  // Start the show - transitions from pre-show to live and inserts queue users as performers
+  const startShow = async () => {
+    // Fetch queue users and insert them as performers
+    if (id && queue.length > 0) {
+      try {
+        // Get first two users from queue
+        const nextTwo = queue.slice(0, 2)
+        
+        // Fetch user details for the queue users
+        const userIds = nextTwo.map(q => q.userId).filter(Boolean)
+        let userData: Array<{id: string; username: string; avatar: string}> = []
+        
+        if (userIds.length > 0) {
+          const { data: users } = await supabase
+            .from('users')
+            .select('id, username, avatar')
+            .in('id', userIds)
+          
+          if (users) userData = users
+        }
+        
+        // Update performer boxes with queue users
+        const updatedPerformers = nextTwo.map((q, idx) => {
+          const user = userData.find(u => u.id === q.userId)
+          return {
+            ...performerBoxes[idx],
+            userId: q.userId || `user-${idx}`,
+            username: user?.username || q.username || `Performer ${idx + 1}`,
+            avatar: user?.avatar || q.avatar || '',
+            isPerforming: true,
+            score: 0,
+            gifts: 0,
+            judgeVotes: 0,
+            viewerCount: 0,
+            isPublishing: false
+          }
+        })
+        
+        // If we have less than 2 queue users, fill remaining with empty
+        while (updatedPerformers.length < 2) {
+          updatedPerformers.push({
+            ...performerBoxes[updatedPerformers.length],
+            userId: '',
+            username: '',
+            avatar: '',
+            isPerforming: false,
+            score: 0,
+            gifts: 0,
+            judgeVotes: 0,
+            viewerCount: 0,
+            isPublishing: false
+          })
+        }
+        
+        setPerformerBoxes(updatedPerformers)
+        
+        // Update queue - remove the first two
+        setQueue(queue.slice(2))
+      } catch (err) {
+        console.error('Error inserting queue users:', err)
+      }
+    }
+    
     setShowState('live')
     setCurtainsOpen(true)
     setTimer(PERFORMANCE_DURATION)
@@ -340,9 +446,12 @@ export function LiveShowPage() {
     setShowWinner(false)
     setWinner(null)
     // Reset performer boxes
-    setPerformerBoxes(prev => prev.map(p => ({ ...p, gifts: 0, judgeVotes: 0, isPerforming: false })))
+    setPerformerBoxes(prev => prev.map(p => ({ ...p, gifts: 0, judgeVotes: 0, isPerforming: false, isPublishing: false })))
     // Reset judge votes
-    setJudgeBoxes(prev => prev.map(j => ({ ...j, vote: null })))
+    setJudgeBoxes(prev => prev.map(j => ({ ...j, vote: null, votedForPerformer: undefined })))
+    // Reset publishing states
+    setHostPublishEnabled(false)
+    setPerformerPublishEnabled([false, false])
   }
 
   // Handle spacebar to toggle curtains for host/CEO
@@ -535,16 +644,16 @@ export function LiveShowPage() {
     if (queue.length > 0) {
       const nextTwo = queue.slice(0, 2)
       setPerformerBoxes([
-        { ...performerBoxes[0], userId: nextTwo[0]?.userId || '', username: nextTwo[0]?.username || '', avatar: nextTwo[0]?.avatar || '', isPerforming: true, score: 0, gifts: 0 },
-        { ...performerBoxes[1], userId: nextTwo[1]?.userId || '', username: nextTwo[1]?.username || '', avatar: nextTwo[1]?.avatar || '', isPerforming: true, score: 0, gifts: 0 },
+        { ...performerBoxes[0], userId: nextTwo[0]?.userId || '', username: nextTwo[0]?.username || '', avatar: nextTwo[0]?.avatar || '', isPerforming: true, score: 0, gifts: 0, judgeVotes: 0, isPublishing: false },
+        { ...performerBoxes[1], userId: nextTwo[1]?.userId || '', username: nextTwo[1]?.username || '', avatar: nextTwo[1]?.avatar || '', isPerforming: true, score: 0, gifts: 0, judgeVotes: 0, isPublishing: false },
       ])
       setQueue(queue.slice(2))
       setTimer(PERFORMANCE_DURATION)
       setIsTimerRunning(true)
     } else {
       setPerformerBoxes([
-        { ...performerBoxes[0], userId: '', username: '', avatar: '', isPerforming: false, score: 0, gifts: 0 },
-        { ...performerBoxes[1], userId: '', username: '', avatar: '', isPerforming: false, score: 0, gifts: 0 },
+        { ...performerBoxes[0], userId: '', username: '', avatar: '', isPerforming: false, score: 0, gifts: 0, judgeVotes: 0, isPublishing: false },
+        { ...performerBoxes[1], userId: '', username: '', avatar: '', isPerforming: false, score: 0, gifts: 0, judgeVotes: 0, isPublishing: false },
       ])
       setIsTimerRunning(false)
     }
@@ -554,6 +663,8 @@ export function LiveShowPage() {
   useEffect(() => {
     if (!id) return
 
+    // Only load from database when we have a show ID
+
     const loadQueue = async () => {
       const { data } = await supabase
         .from('show_queue')
@@ -562,15 +673,31 @@ export function LiveShowPage() {
         .order('position', { ascending: true })
       
       if (data) {
-        setQueue(data.map((item, idx) => ({
-          id: item.id,
-          userId: item.user_id,
-          username: `Performer ${idx + 1}`,
-          avatar: '',
-          position: item.position,
-          status: item.status,
-          isConnected: false
-        })))
+        // Also fetch user details
+        const userIds = data.map(item => item.user_id).filter(Boolean)
+        let userData: Array<{id: string; username: string; avatar: string}> = []
+        
+        if (userIds.length > 0) {
+          const { data: users } = await supabase
+            .from('users')
+            .select('id, username, avatar')
+            .in('id', userIds)
+          
+          if (users) userData = users
+        }
+        
+        setQueue(data.map((item, idx) => {
+          const user = userData.find(u => u.id === item.user_id)
+          return {
+            id: item.id,
+            userId: item.user_id,
+            username: user?.username || `Performer ${idx + 1}`,
+            avatar: user?.avatar || '',
+            position: item.position,
+            status: item.status,
+            isConnected: false
+          }
+        }))
       }
     }
     loadQueue()
@@ -729,13 +856,10 @@ export function LiveShowPage() {
 
   // Check user roles
   useEffect(() => {
-    if (isPreview) {
-      // Use requestAnimationFrame to avoid calling setState synchronously in effect
-      requestAnimationFrame(() => setIsHost(true))
-    } else if (user) {
+    if (user) {
       requestAnimationFrame(() => setIsHost(Boolean(user?.is_ceo) || Boolean(user?.is_admin)))
     }
-  }, [user, isPreview])
+  }, [user])
 
   // Generate confetti when winner is shown
   useEffect(() => {
@@ -761,8 +885,8 @@ export function LiveShowPage() {
     if (queue.length > 0) {
       const nextTwo = queue.slice(0, 2)
       setPerformerBoxes([
-        { ...performerBoxes[0], userId: nextTwo[0]?.userId || '', username: nextTwo[0]?.username || '', avatar: nextTwo[0]?.avatar || '', isPerforming: true, score: 0, gifts: 0 },
-        { ...performerBoxes[1], userId: nextTwo[1]?.userId || '', username: nextTwo[1]?.username || '', avatar: nextTwo[1]?.avatar || '', isPerforming: true, score: 0, gifts: 0 },
+        { ...performerBoxes[0], userId: nextTwo[0]?.userId || '', username: nextTwo[0]?.username || '', avatar: nextTwo[0]?.avatar || '', isPerforming: true, score: 0, gifts: 0, judgeVotes: 0, isPublishing: false },
+        { ...performerBoxes[1], userId: nextTwo[1]?.userId || '', username: nextTwo[1]?.username || '', avatar: nextTwo[1]?.avatar || '', isPerforming: true, score: 0, gifts: 0, judgeVotes: 0, isPublishing: false },
       ])
       setQueue(queue.slice(2))
       setTimer(PERFORMANCE_DURATION)
@@ -776,7 +900,7 @@ export function LiveShowPage() {
     setIsTimerRunning(false)
   }
 
-  // Handle judge voting (YES/NO)
+  // Handle judge voting (YES/NO) with restriction - cannot vote same way on multiple performers
   const handleJudgeVote = async (performerIndex: 0 | 1, vote: 'yes' | 'no') => {
     if (!user) {
       alert('Please log in to vote!')
@@ -790,9 +914,20 @@ export function LiveShowPage() {
       return
     }
     
-    // Update judge's vote
+    const currentJudge = judgeBoxes[judgeIndex]
+    
+    // Check if judge has already voted on another performer
+    if (currentJudge.votedForPerformer !== undefined && currentJudge.votedForPerformer !== null) {
+      // Judge has already voted - check if trying to vote same way
+      if (currentJudge.vote === vote) {
+        alert(`You already voted ${vote.toUpperCase()} for the other performer! You can only vote differently on each performer.`)
+        return
+      }
+    }
+    
+    // Update judge's vote and which performer they voted for
     setJudgeBoxes(prev => prev.map((judge, idx) => 
-      idx === judgeIndex ? { ...judge, vote: vote } : judge
+      idx === judgeIndex ? { ...judge, vote: vote, votedForPerformer: performerIndex } : judge
     ))
     
     // If voting YES, increment the performer's judge votes
@@ -1436,7 +1571,7 @@ export function LiveShowPage() {
                 {/* Screen border glow */}
                 <div className="absolute inset-0 rounded-xl border-2 border-neon-gold/50 shadow-[0_0_30px_rgba(255,215,0,0.3)]"></div>
                 
-                {performerBoxes[0].isPerforming ? (
+                {displayPerformers[0].isPerforming ? (
                   <>
                     {/* Performer content */}
                     <div className="absolute inset-2 rounded-lg overflow-hidden">
@@ -1444,9 +1579,9 @@ export function LiveShowPage() {
                         {/* Stage screen content */}
                         <div className="text-center">
                           <div className="w-24 h-24 mx-auto rounded-full overflow-hidden border-4 border-neon-gold mb-3 shadow-[0_0_30px_rgba(255,215,0,0.5)]">
-                            <img src={performerBoxes[0].avatar || `https://i.pravatar.cc/150?u=${performerBoxes[0].userId}`} alt={performerBoxes[0].username} className="w-full h-full object-cover" />
+                            <img src={displayPerformers[0].avatar || `https://i.pravatar.cc/150?u=${displayPerformers[0].userId}`} alt={displayPerformers[0].username} className="w-full h-full object-cover" />
                           </div>
-                          <p className="text-neon-gold font-bold text-xl text-glow-gold">{performerBoxes[0].username}</p>
+                          <p className="text-neon-gold font-bold text-xl text-glow-gold">{displayPerformers[0].username}</p>
                         </div>
                       </div>
                       
@@ -1459,7 +1594,7 @@ export function LiveShowPage() {
                           </span>
                           <span className="bg-neon-purple/80 text-white px-3 py-1 rounded text-xs font-bold flex items-center gap-1">
                             <Users className="w-3 h-3" />
-                            {performerBoxes[0].viewerCount?.toLocaleString() || '0'}
+                            {displayPerformers[0].viewerCount?.toLocaleString() || '0'}
                           </span>
                         </div>
                         <span className="bg-black/60 text-neon-yellow px-3 py-1 rounded text-xs font-bold">
@@ -1467,25 +1602,65 @@ export function LiveShowPage() {
                         </span>
                       </div>
                       
+                      {/* Performer Publish Checkbox */}
+                      {user?.id === displayPerformers[0].userId && displayPerformers[0].isPerforming && (
+                        <div className="absolute top-14 left-3">
+                          <label className="flex items-center gap-1 px-2 py-1 rounded bg-black/60 border border-neon-gold/50 cursor-pointer hover:bg-black/80">
+                            <input
+                              type="checkbox"
+                              checked={performerPublishEnabled[0]}
+                              onChange={(e) => handlePerformerPublishToggle(0, e.target.checked)}
+                              className="w-3 h-3 accent-neon-gold"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <Video className="w-3 h-3 text-neon-gold" />
+                            <span className="text-xs font-bold text-neon-gold">
+                              {performerPublishEnabled[0] ? 'Publishing' : 'Publish Track'}
+                            </span>
+                          </label>
+                        </div>
+                      )}
+                      
                       {/* Bottom stats */}
                       <div className="absolute bottom-3 left-3 right-3 flex justify-between items-end">
                         <div className="flex gap-2">
                           <span className="bg-neon-gold/30 text-neon-gold px-3 py-1.5 rounded text-sm font-bold flex items-center gap-1">
                             <Star className="w-4 h-4" />
-                            {performerBoxes[0].score} pts
+                            {displayPerformers[0].score} pts
                           </span>
                           <span className="bg-candy-red/30 text-candy-red px-3 py-1.5 rounded text-sm flex items-center gap-1">
                             <Gift className="w-4 h-4" />
-                            {performerBoxes[0].gifts}
+                            {displayPerformers[0].gifts}
                           </span>
                         </div>
-                        <button 
-                          onClick={() => handleVote(performerBoxes[0].userId)}
-                          className="btn-neon-red px-4 py-2 rounded-full text-sm flex items-center gap-1"
-                        >
-                          <Gift className="w-4 h-4" />
-                          Gift
-                        </button>
+                        <div className="flex gap-2">
+                          {/* Judge voting buttons on performer box */}
+                          {judgeBoxes.some(j => j.isJoined) && (
+                            <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                onClick={() => handleJudgeVote(0, 'yes')}
+                                className="px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 bg-green-500/70 hover:bg-green-500 text-white"
+                                title="Vote YES for this performer"
+                              >
+                                ✓ YES
+                              </button>
+                              <button
+                                onClick={() => handleJudgeVote(0, 'no')}
+                                className="px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 bg-red-500/70 hover:bg-red-500 text-white"
+                                title="Vote NO for this performer"
+                              >
+                                ✗ NO
+                              </button>
+                            </div>
+                          )}
+                          <button 
+                            onClick={() => handleVote(performerBoxes[0].userId)}
+                            className="btn-neon-red px-4 py-2 rounded-full text-sm flex items-center gap-1"
+                          >
+                            <Gift className="w-4 h-4" />
+                            Gift
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </>
@@ -1566,6 +1741,25 @@ export function LiveShowPage() {
                         </span>
                       </div>
                       
+                      {/* Performer Publish Checkbox for Performer 2 */}
+                      {user?.id === performerBoxes[1].userId && performerBoxes[1].isPerforming && (
+                        <div className="absolute top-14 left-3">
+                          <label className="flex items-center gap-1 px-2 py-1 rounded bg-black/60 border border-neon-purple/50 cursor-pointer hover:bg-black/80">
+                            <input
+                              type="checkbox"
+                              checked={performerPublishEnabled[1]}
+                              onChange={(e) => handlePerformerPublishToggle(1, e.target.checked)}
+                              className="w-3 h-3 accent-neon-purple"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <Video className="w-3 h-3 text-neon-purple" />
+                            <span className="text-xs font-bold text-neon-purple">
+                              {performerPublishEnabled[1] ? 'Publishing' : 'Publish Track'}
+                            </span>
+                          </label>
+                        </div>
+                      )}
+                      
                       <div className="absolute bottom-3 left-3 right-3 flex justify-between items-end">
                         <div className="flex gap-2">
                           <span className="bg-neon-purple/30 text-neon-purple px-3 py-1.5 rounded text-sm font-bold flex items-center gap-1">
@@ -1577,13 +1771,34 @@ export function LiveShowPage() {
                             {performerBoxes[1].gifts}
                           </span>
                         </div>
-                        <button 
-                          onClick={() => handleVote(performerBoxes[1].userId)}
-                          className="btn-neon-purple px-4 py-2 rounded-full text-sm flex items-center gap-1"
-                        >
-                          <Gift className="w-4 h-4" />
-                          Gift
-                        </button>
+                        <div className="flex gap-2">
+                          {/* Judge voting buttons on performer box */}
+                          {judgeBoxes.some(j => j.isJoined) && (
+                            <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                onClick={() => handleJudgeVote(1, 'yes')}
+                                className="px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 bg-green-500/70 hover:bg-green-500 text-white"
+                                title="Vote YES for this performer"
+                              >
+                                ✓ YES
+                              </button>
+                              <button
+                                onClick={() => handleJudgeVote(1, 'no')}
+                                className="px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 bg-red-500/70 hover:bg-red-500 text-white"
+                                title="Vote NO for this performer"
+                              >
+                                ✗ NO
+                              </button>
+                            </div>
+                          )}
+                          <button 
+                            onClick={() => handleVote(performerBoxes[1].userId)}
+                            className="btn-neon-purple px-4 py-2 rounded-full text-sm flex items-center gap-1"
+                          >
+                            <Gift className="w-4 h-4" />
+                            Gift
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </>
@@ -1917,6 +2132,22 @@ export function LiveShowPage() {
                 </button>
               )}
 
+              {/* Host Publish Checkbox - allows host to start/stop publishing */}
+              {isHost && (
+                <label className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-gray-800 border border-candy-red/50 cursor-pointer hover:bg-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={hostPublishEnabled}
+                    onChange={(e) => handleHostPublishToggle(e.target.checked)}
+                    className="w-4 h-4 accent-candy-red"
+                  />
+                  <Video className="w-4 h-4 text-candy-red" />
+                  <span className="text-sm font-bold text-white">
+                    {hostPublishEnabled ? 'Publishing' : 'Go Live'}
+                  </span>
+                </label>
+              )}
+
               {/* Curtain Toggle Button */}
               {isHost && (
                 <button
@@ -1996,8 +2227,8 @@ export function LiveShowPage() {
                 </button>
               )}
 
-              {/* Join Queue Button - for regular users (allow joining even when no show is live) */}
-              {!isHost && !isPublishingVideo && !isInQueue && user && (curtainsOpen || isPreview) && (
+              {/* Join Queue Button - for regular users (allow joining when show is live) */}
+              {!isHost && !isPublishingVideo && !isInQueue && user && curtainsOpen && (
                 <button
                   onClick={handleJoinQueue}
                   disabled={queue.length >= 52}

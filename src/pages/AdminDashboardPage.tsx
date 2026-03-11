@@ -6,7 +6,7 @@ import { VideoPlayer } from '../components/VideoPlayer';
 import { useAppStore } from '../store/useAppStore';
 import { useNavigate } from 'react-router-dom';
 import { PayoutAllModal } from '../components/PayoutAllModal';
-import { Globe, MessageSquare, Play, X } from 'lucide-react';
+import { Globe, MessageSquare, Play, X, ChevronRight, ChevronDown } from 'lucide-react';
 
 type TabType = 'judge_applications' | 'host_applications' | 'performer_applications' | 'users' | 'settings' | 'badges' | 'payouts' | 'ip_ban' | 'support_tickets';
 
@@ -139,6 +139,17 @@ export const AdminDashboardPage: React.FC = () => {
   const [banningUser, setBanningUser] = useState(false);
   const [selectedBanUser, setSelectedBanUser] = useState<string>('');
   
+  // Collapsible sections state
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+  
+  // Toggle section collapse
+  const toggleSection = (section: string) => {
+    setCollapsedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+  
   // Video modal state
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [selectedVideoUrl, setSelectedVideoUrl] = useState<string>('');
@@ -267,10 +278,11 @@ export const AdminDashboardPage: React.FC = () => {
 
         setHostApplications(mergedHostData);
       } else if (activeTab === 'performer_applications') {
-        // Query performer applications
+        // Query performer applications - filter out denied ones
         const { data: perfApps, error: perfError } = await supabase
           .from('performer_applications')
           .select('*')
+          .neq('status', 'denied')
           .order('created_at', { ascending: false });
 
         if (perfError) throw perfError;
@@ -683,15 +695,15 @@ export const AdminDashboardPage: React.FC = () => {
   };
 
   const tabs = [
-    { id: 'judge_applications' as TabType, label: 'Judge Apps', icon: '📋' },
-    { id: 'host_applications' as TabType, label: 'Host Apps', icon: '🎤' },
-    { id: 'performer_applications' as TabType, label: 'Performer Apps', icon: '⭐' },
-    { id: 'users' as TabType, label: 'Users', icon: '👥' },
-    { id: 'badges' as TabType, label: 'Badges', icon: '🏅' },
-    { id: 'payouts' as TabType, label: 'Payouts', icon: '💰' },
-    { id: 'settings' as TabType, label: 'Settings', icon: '⚙️' },
-    ...(isCEO ? [{ id: 'ip_ban' as TabType, label: 'IP Ban', icon: '🚫' }] : []),
-    ...(isCEO ? [{ id: 'support_tickets' as TabType, label: 'Support', icon: '🎫' }] : []),
+    { id: 'judge_applications' as TabType, label: 'Judge Apps', icon: '📋', count: judgeApplications.length },
+    { id: 'host_applications' as TabType, label: 'Host Apps', icon: '🎤', count: hostApplications.length },
+    { id: 'performer_applications' as TabType, label: 'Performer Apps', icon: '⭐', count: performerApplications.length },
+    { id: 'users' as TabType, label: 'Users', icon: '👥', count: users.length },
+    { id: 'badges' as TabType, label: 'Badges', icon: '🏅', count: users.length },
+    { id: 'payouts' as TabType, label: 'Payouts', icon: '💰', count: 0 },
+    { id: 'settings' as TabType, label: 'Settings', icon: '⚙️', count: 0 },
+    ...(isCEO ? [{ id: 'ip_ban' as TabType, label: 'IP Ban', icon: '🚫', count: bannedIPs.filter(b => b.is_active).length }] : []),
+    ...(isCEO ? [{ id: 'support_tickets' as TabType, label: 'Support', icon: '🎫', count: supportTickets.length }] : []),
   ];
 
   // Show loading while checking authorization
@@ -739,6 +751,11 @@ export const AdminDashboardPage: React.FC = () => {
               }`}
             >
               {tab.icon} {tab.label}
+              {tab.count > 0 && (
+                <span className="ml-2 px-2 py-0.5 bg-gray-600 rounded-full text-xs">
+                  {tab.count}
+                </span>
+              )}
             </button>
           ))}
         </div>

@@ -730,6 +730,10 @@ DROP POLICY IF EXISTS "Queue can be viewed by everyone" ON public.show_queue;
 CREATE POLICY "Queue can be viewed by everyone" 
     ON public.show_queue FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Authenticated users can join queue" ON public.show_queue;
+CREATE POLICY "Authenticated users can join queue" 
+    ON public.show_queue FOR INSERT WITH CHECK (auth.uid() = user_id);
+
 DROP POLICY IF EXISTS "Hosts can manage their show queue" ON public.show_queue;
 CREATE POLICY "Hosts can manage their show queue" 
     ON public.show_queue FOR ALL USING (

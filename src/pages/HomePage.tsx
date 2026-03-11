@@ -86,8 +86,8 @@ export function HomePage() {
     
     setJoiningQueue(true)
     try {
-      // Get the current live show or preview show
-      const showId = liveShows[0]?.id || 'preview'
+      // Get the current live show
+      const showId = liveShows[0]?.id
       
       // Check if user is already in queue
       const { data: existingQueue } = await supabase
@@ -232,7 +232,7 @@ export function HomePage() {
 
             {/* Secondary Button - Watch Live */}
             <Link
-              to={liveShows[0] ? `/show/${liveShows[0].id}` : '/show/preview'}
+              to={liveShows[0] ? `/show/${liveShows[0].id}` : '/show'}
               className="group relative px-8 py-4 rounded-full text-lg font-bold flex items-center gap-3 transition-all duration-300 hover:scale-105"
               style={{
                 background: `linear-gradient(135deg, ${COLORS.purple} 0%, #7c3aed 100%)`,
@@ -480,7 +480,7 @@ export function HomePage() {
               {/* Watch Live Button */}
               <div className="text-center">
                 <Link
-                  to="/show/preview"
+                  to="/show"
                   className="inline-block px-8 py-3 rounded-full font-bold transition-all duration-300 hover:scale-105"
                   style={{
                     backgroundColor: COLORS.red,
@@ -613,7 +613,7 @@ export function HomePage() {
 
           {/* Join Live Shows Button */}
           <Link
-            to="/show/preview"
+            to="/show"
             className="inline-block px-12 py-5 rounded-full text-xl font-bold transition-all duration-300 hover:scale-105"
             style={{
               backgroundColor: COLORS.red,

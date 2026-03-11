@@ -295,7 +295,7 @@ export function useAgora(options: UseAgoraOptions): UseAgoraReturn {
     
     clientRef.current = client
     
-    if (role === 'host' || role === 'judge' || role === 'performer') {
+    if (role === 'host' || role === 'judge' || role === 'performer' || role === 'ceo') {
       client.setClientRole('host')
     }
     

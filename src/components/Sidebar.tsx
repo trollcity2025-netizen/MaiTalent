@@ -33,7 +33,7 @@ export function Sidebar() {
   // Build nav items with dynamic Live Now link
   const navItems = [
     { path: '/', icon: Home, label: 'Home' },
-    { path: liveShows[0] ? `/show/${liveShows[0].id}` : '/show/preview', icon: Radio, label: '🔴 Live Now' },
+    { path: liveShows[0] ? `/show/${liveShows[0].id}` : '/show', icon: Radio, label: '🔴 Live Now' },
     ...staticNavItems.slice(1),
   ]
   
