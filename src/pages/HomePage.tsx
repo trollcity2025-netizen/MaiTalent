@@ -225,10 +225,6 @@ export function HomePage() {
           </div>
         </div>
         
-        {/* Curtain divider */}
-        <div className="absolute top-0 bottom-0 left-1/2 w-[4px] -translate-x-1/2 pointer-events-none z-25
-          bg-gradient-to-b from-black/30 via-black/50 to-black/30 blur-[1px]"></div>
-
         {/* Spotlight Beams */}
         <div 
           className="absolute top-0 left-1/4 w-64 h-full pointer-events-none"

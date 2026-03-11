@@ -5,9 +5,9 @@ import type { BadgeType } from '../components/Badge';
 import { useAppStore } from '../store/useAppStore';
 import { useNavigate } from 'react-router-dom';
 import { PayoutAllModal } from '../components/PayoutAllModal';
-import { Globe } from 'lucide-react';
+import { Globe, MessageSquare, Check, X, Loader2 } from 'lucide-react';
 
-type TabType = 'judge_applications' | 'users' | 'settings' | 'badges' | 'payouts' | 'ip_ban';
+type TabType = 'judge_applications' | 'users' | 'settings' | 'badges' | 'payouts' | 'ip_ban' | 'support_tickets';
 
 interface JudgeApplication {
   id: string;
@@ -86,6 +86,19 @@ export const AdminDashboardPage: React.FC = () => {
   const [newBanExpiry, setNewBanExpiry] = useState('');
   const [banningUser, setBanningUser] = useState(false);
   const [selectedBanUser, setSelectedBanUser] = useState<string>('');
+  
+  // Support tickets state
+  const [supportTickets, setSupportTickets] = useState<Array<{
+    id: string;
+    user_id: string;
+    username: string;
+    subject: string;
+    message: string;
+    status: string;
+    priority: string;
+    created_at: string;
+    updated_at: string;
+  }>>([]);
 
   const checkAuthorization = useCallback(async () => {
     if (!user) {
@@ -189,6 +202,14 @@ export const AdminDashboardPage: React.FC = () => {
 
         if (error) throw error;
         setBannedIPs(data || []);
+      } else if (activeTab === 'support_tickets' && isCEO) {
+        const { data, error } = await supabase
+          .from('support_tickets')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        setSupportTickets(data || []);
       }
     } catch (err) {
       console.error('Error loading data:', err);
@@ -343,6 +364,7 @@ export const AdminDashboardPage: React.FC = () => {
     { id: 'payouts' as TabType, label: 'Payouts', icon: '💰' },
     { id: 'settings' as TabType, label: 'Settings', icon: '⚙️' },
     ...(isCEO ? [{ id: 'ip_ban' as TabType, label: 'IP Ban', icon: '🚫' }] : []),
+    ...(isCEO ? [{ id: 'support_tickets' as TabType, label: 'Support', icon: '🎫' }] : []),
   ];
 
   // Show loading while checking authorization
@@ -861,6 +883,129 @@ export const AdminDashboardPage: React.FC = () => {
                     Run the SQL from supabase/ip-ban-migration.sql in your Supabase SQL editor.
                   </p>
                 </div>
+              </div>
+            )}
+
+            {/* Support Tickets Tab */}
+            {activeTab === 'support_tickets' && isCEO && (
+              <div className="space-y-4">
+                <h2 className="text-xl font-semibold mb-4">🎫 Support Tickets</h2>
+                
+                {supportTickets.length === 0 ? (
+                  <div className="bg-gray-900 border border-gray-700 rounded-xl p-8 text-center">
+                    <MessageSquare className="w-12 h-12 mx-auto text-gray-600 mb-4" />
+                    <p className="text-gray-400">No support tickets yet</p>
+                    <p className="text-gray-500 text-sm mt-2">Users can submit tickets from their profile Settings tab</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {supportTickets.map((ticket) => (
+                      <div
+                        key={ticket.id}
+                        className="bg-gray-900 border border-gray-700 rounded-xl p-4"
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
+                              <span className="text-lg">🎫</span>
+                            </div>
+                            <div>
+                              <p className="font-semibold text-white">{ticket.subject}</p>
+                              <p className="text-sm text-gray-400">
+                                From: <span className="text-neon-gold">{ticket.username}</span>
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              ticket.priority === 'urgent' ? 'bg-red-500/20 text-red-400' :
+                              ticket.priority === 'high' ? 'bg-orange-500/20 text-orange-400' :
+                              ticket.priority === 'normal' ? 'bg-blue-500/20 text-blue-400' :
+                              'bg-gray-500/20 text-gray-400'
+                            }`}>
+                              {ticket.priority}
+                            </span>
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              ticket.status === 'open' ? 'bg-green-500/20 text-green-400' :
+                              ticket.status === 'in_progress' ? 'bg-yellow-500/20 text-yellow-400' :
+                              ticket.status === 'resolved' ? 'bg-blue-500/20 text-blue-400' :
+                              'bg-gray-500/20 text-gray-400'
+                            }`}>
+                              {ticket.status.replace('_', ' ')}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-gray-800/50 rounded-lg p-3 mb-3">
+                          <p className="text-gray-300 text-sm">{ticket.message}</p>
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-gray-500">
+                            Created: {new Date(ticket.created_at).toLocaleString()}
+                          </p>
+                          <div className="flex gap-2">
+                            {ticket.status === 'open' && (
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await supabase
+                                      .from('support_tickets')
+                                      .update({ status: 'in_progress' })
+                                      .eq('id', ticket.id);
+                                    loadData();
+                                  } catch (err) {
+                                    console.error('Error updating ticket:', err);
+                                  }
+                                }}
+                                className="px-3 py-1 bg-yellow-600 hover:bg-yellow-700 rounded text-xs font-medium"
+                              >
+                                Start Working
+                              </button>
+                            )}
+                            {ticket.status === 'in_progress' && (
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await supabase
+                                      .from('support_tickets')
+                                      .update({ status: 'resolved', resolved_at: new Date().toISOString() })
+                                      .eq('id', ticket.id);
+                                    loadData();
+                                  } catch (err) {
+                                    console.error('Error updating ticket:', err);
+                                  }
+                                }}
+                                className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-xs font-medium"
+                              >
+                                Mark Resolved
+                              </button>
+                            )}
+                            {(ticket.status === 'open' || ticket.status === 'in_progress') && (
+                              <button
+                                onClick={async () => {
+                                  if (!confirm('Close this ticket without resolving?')) return;
+                                  try {
+                                    await supabase
+                                      .from('support_tickets')
+                                      .update({ status: 'closed' })
+                                      .eq('id', ticket.id);
+                                    loadData();
+                                  } catch (err) {
+                                    console.error('Error closing ticket:', err);
+                                  }
+                                }}
+                                className="px-3 py-1 bg-gray-600 hover:bg-gray-700 rounded text-xs font-medium"
+                              >
+                                Close
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </>

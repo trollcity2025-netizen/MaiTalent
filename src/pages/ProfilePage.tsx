@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useParams, useNavigate } from 'react-router-dom'
-import { Users, Play, Settings, Plus, Award, Video, Loader2, Check, Camera, Trash2 } from 'lucide-react'
+import { Users, Play, Settings, Plus, Award, Video, Loader2, Check, Camera, Trash2, Key, AlertTriangle, MessageSquare, Send } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAppStore } from '../store/useAppStore'
 
@@ -26,7 +26,7 @@ export function ProfilePage() {
   const params = useParams()
   const navigate = useNavigate()
   const { user: storeUser, setUser } = useAppStore()
-  const [activeTab, setActiveTab] = useState<'performances' | 'clips' | 'achievements' | 'followers'>('performances')
+  const [activeTab, setActiveTab] = useState<'performances' | 'clips' | 'achievements' | 'followers' | 'settings'>('performances')
   const [isOwnProfile, setIsOwnProfile] = useState(false)
   const [profileUser, setProfileUser] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(true)
@@ -36,6 +36,16 @@ export function ProfilePage() {
   const [performances, setPerformances] = useState<Performance[]>([])
   const [deletingPerfId, setDeletingPerfId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  // Settings state
+  const [sendingTicket, setSendingTicket] = useState(false)
+  const [ticketSent, setTicketSent] = useState(false)
+  const [ticketForm, setTicketForm] = useState({ subject: '', message: '' })
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deletingAccount, setDeletingAccount] = useState(false)
+  const [resettingPassword, setResettingPassword] = useState(false)
+  const [resetPasswordEmail, setResetPasswordEmail] = useState('')
+  const [resetPasswordSent, setResetPasswordSent] = useState(false)
   const [editForm, setEditForm] = useState({
     username: '',
     bio: '',
@@ -555,6 +565,7 @@ export function ProfilePage() {
           { id: 'clips', label: 'Clips', icon: Video },
           { id: 'achievements', label: 'Achievements', icon: Award },
           { id: 'followers', label: 'Followers', icon: Users },
+          ...(isOwnProfile ? [{ id: 'settings', label: 'Settings', icon: Settings }] : []),
         ].map((tab) => (
           <button
             key={tab.id}
@@ -659,6 +670,214 @@ export function ProfilePage() {
         <div className="text-center py-12 text-gray-400">
           <Users className="w-16 h-16 mx-auto mb-4 opacity-50" />
           <p>No followers yet</p>
+        </div>
+      )}
+
+      {/* Settings Tab - only for own profile */}
+      {activeTab === 'settings' && isOwnProfile && (
+        <div className="space-y-6">
+          {/* Reset Password */}
+          <div className="glass rounded-xl p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Key className="w-6 h-6 text-neon-gold" />
+              <h3 className="text-xl font-bold text-white">Reset Password</h3>
+            </div>
+            {!resetPasswordSent ? (
+              <div>
+                <p className="text-gray-400 mb-4">Enter your email to receive a password reset link.</p>
+                <div className="flex gap-3">
+                  <input
+                    type="email"
+                    value={resetPasswordEmail}
+                    onChange={(e) => setResetPasswordEmail(e.target.value)}
+                    placeholder="your@email.com"
+                    className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-neon-gold focus:outline-none"
+                  />
+                  <button
+                    onClick={async () => {
+                      if (!resetPasswordEmail) {
+                        alert('Please enter your email address')
+                        return
+                      }
+                      setResettingPassword(true)
+                      try {
+                        const { error } = await supabase.auth.resetPasswordForEmail(resetPasswordEmail, {
+                          redirectTo: `${window.location.origin}/reset-password`
+                        })
+                        if (error) throw error
+                        setResetPasswordSent(true)
+                      } catch (err) {
+                        console.error('Password reset error:', err)
+                        alert('Failed to send reset email. Please try again.')
+                      } finally {
+                        setResettingPassword(false)
+                      }
+                    }}
+                    disabled={resettingPassword}
+                    className="btn-neon-gold px-6 py-2 rounded-lg font-bold flex items-center gap-2"
+                  >
+                    {resettingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                    Send Link
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-green-400 flex items-center gap-2">
+                <Check className="w-5 h-5" />
+                Password reset link sent! Check your email.
+              </div>
+            )}
+          </div>
+
+          {/* Delete Account */}
+          <div className="glass rounded-xl p-6 border border-red-500/30">
+            <div className="flex items-center gap-3 mb-4">
+              <AlertTriangle className="w-6 h-6 text-candy-red" />
+              <h3 className="text-xl font-bold text-white">Delete Account</h3>
+            </div>
+            <p className="text-gray-400 mb-4">
+              This will permanently delete your account and all associated data. This action cannot be undone.
+            </p>
+            {!showDeleteConfirm ? (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="px-6 py-2 bg-candy-red/20 hover:bg-candy-red/40 border border-candy-red text-candy-red rounded-lg font-bold flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete My Account
+              </button>
+            ) : (
+              <div className="bg-candy-red/10 rounded-lg p-4 border border-candy-red/50">
+                <p className="text-candy-red font-bold mb-3">Are you sure? This cannot be undone!</p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="px-4 py-2 bg-gray-600 text-white rounded-lg font-bold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!confirm('Really delete your account? This is permanent!')) return
+                      setDeletingAccount(true)
+                      try {
+                        const { data: { user } } = await supabase.auth.getUser()
+                        if (user) {
+                          // Delete user data first
+                          await supabase.from('users').delete().eq('id', user.id)
+                          // Then sign out
+                          await supabase.auth.signOut()
+                          navigate('/')
+                        }
+                      } catch (err) {
+                        console.error('Delete account error:', err)
+                        alert('Failed to delete account. Please try again.')
+                      } finally {
+                        setDeletingAccount(false)
+                      }
+                    }}
+                    disabled={deletingAccount}
+                    className="px-4 py-2 bg-candy-red text-white rounded-lg font-bold flex items-center gap-2"
+                  >
+                    {deletingAccount ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                    Yes, Delete Forever
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Submit Support Ticket */}
+          <div className="glass rounded-xl p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <MessageSquare className="w-6 h-6 text-neon-purple" />
+              <h3 className="text-xl font-bold text-white">Submit Support Ticket</h3>
+            </div>
+            {!ticketSent ? (
+              <div className="space-y-4">
+                <p className="text-gray-400">Having issues? Submit a support ticket and our team will help you.</p>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Subject</label>
+                  <input
+                    type="text"
+                    value={ticketForm.subject}
+                    onChange={(e) => setTicketForm(prev => ({ ...prev, subject: e.target.value }))}
+                    placeholder="Brief description of your issue"
+                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-neon-purple focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Message</label>
+                  <textarea
+                    value={ticketForm.message}
+                    onChange={(e) => setTicketForm(prev => ({ ...prev, message: e.target.value }))}
+                    placeholder="Describe your issue in detail..."
+                    rows={4}
+                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white resize-none focus:border-neon-purple focus:outline-none"
+                  />
+                </div>
+                <button
+                  onClick={async () => {
+                    if (!ticketForm.subject || !ticketForm.message) {
+                      alert('Please fill in all fields')
+                      return
+                    }
+                    setSendingTicket(true)
+                    try {
+                      const { data: { user } } = await supabase.auth.getUser()
+                      if (!user) throw new Error('Not authenticated')
+                      
+                      // Get username from profile
+                      const { data: profile } = await supabase
+                        .from('users')
+                        .select('username')
+                        .eq('id', user.id)
+                        .single()
+                      
+                      const { error } = await supabase
+                        .from('support_tickets')
+                        .insert({
+                          user_id: user.id,
+                          username: profile?.username || 'Unknown',
+                          subject: ticketForm.subject,
+                          message: ticketForm.message,
+                          status: 'open',
+                          priority: 'normal'
+                        })
+                      
+                      if (error) throw error
+                      setTicketSent(true)
+                      setTicketForm({ subject: '', message: '' })
+                    } catch (err) {
+                      console.error('Submit ticket error:', err)
+                      alert('Failed to submit ticket. Please try again.')
+                    } finally {
+                      setSendingTicket(false)
+                    }
+                  }}
+                  disabled={sendingTicket}
+                  className="w-full py-3 bg-neon-purple hover:bg-neon-purple/80 text-white font-bold rounded-lg flex items-center justify-center gap-2"
+                >
+                  {sendingTicket ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                  Submit Ticket
+                </button>
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-500/20 flex items-center justify-center">
+                  <Check className="w-8 h-8 text-green-400" />
+                </div>
+                <p className="text-green-400 font-bold text-lg mb-2">Ticket Submitted!</p>
+                <p className="text-gray-400">Our team will review your ticket and get back to you soon.</p>
+                <button
+                  onClick={() => setTicketSent(false)}
+                  className="mt-4 text-neon-purple hover:underline"
+                >
+                  Submit Another Ticket
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
