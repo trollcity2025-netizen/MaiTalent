@@ -108,8 +108,11 @@ Recorded content may appear on platforms including but not limited to:
 • social media platforms
 • promotional advertisements
 • marketing materials
+• other websites and online platforms
 
-By using Mai Talent you grant permission for your performances and broadcasts to be recorded and publicly shared.
+By using Mai Talent you GRANT PERMISSION for your performances and broadcasts to be recorded and publicly shared on YouTube and other sites for advertisement and promotional purposes.
+
+You hereby consent to the use of your likeness, voice, performance, and any content you create on the platform for commercial purposes including advertising, marketing, and promotional activities across all media platforms worldwide.
 
 6. Content & Conduct Rules
 
@@ -149,11 +152,40 @@ Mai Talent reserves the right to:
 
 for violations of platform policies.
 
-9. Changes to Terms
+9. Intellectual Property & Copyright
+
+ALL CONTENTS, MATERIALS, AND INTELLECTUAL PROPERTY ON MAI TALENT ARE PROTECTED BY COPYRIGHT AND OTHER INTELLECTUAL PROPERTY LAWS.
+
+IT IS ILLEGAL TO COPY, REPRODUCE, DISTRIBUTE, OR MODIFY ANY CONTENT FROM THIS PLATFORM WITHOUT PRIOR WRITTEN PERMISSION.
+
+This includes but is not limited to:
+
+• videos and live streams
+• images and graphics
+• audio content
+• text and written materials
+• software and code
+• user interfaces and designs
+• logos and branding
+
+Unauthorized copying, reproduction, or distribution of platform content may result in:
+
+• legal action and civil liability
+• criminal prosecution under applicable copyright laws
+• permanent account termination
+• removal of infringing content
+
+Users retain ownership of content they create but grant Mai Talent a license to use, display, and distribute such content as outlined in these terms.
+
+10. Changes to Terms
 
 Mai Talent reserves the right to update these Terms of Service at any time.
 
 Continued use of the platform constitutes acceptance of updated terms.
+
+---
+
+© 2026 Mai Talent. All Rights Reserved.
 `
 
 interface SignupData {
